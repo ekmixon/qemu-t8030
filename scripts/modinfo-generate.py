@@ -28,7 +28,7 @@ def parse_line(line):
             get_data = True
             continue
         if get_data:
-            data += " " + item
+            data += f" {item}"
             continue
     return (kind, data)
 
@@ -54,7 +54,7 @@ def generate(name, lines):
 
     print("    .name = \"%s\"," % name)
     if arch != "":
-        print("    .arch = %s," % arch)
+        print(f"    .arch = {arch},")
     print_array("objs", objs)
     print_array("deps", deps)
     print_array("opts", opts)
@@ -77,7 +77,7 @@ def main(args):
     for modinfo in args:
         with open(modinfo) as f:
             lines = f.readlines()
-        print("    /* %s */" % modinfo)
+        print(f"    /* {modinfo} */")
         (basename, ext) = os.path.splitext(modinfo)
         deps[basename] = generate(basename, lines)
     print_post()
@@ -86,8 +86,7 @@ def main(args):
     error = False
     for dep in flattened_deps:
         if dep not in deps.keys():
-            print("Dependency {} cannot be satisfied".format(dep),
-                  file=sys.stderr)
+            print(f"Dependency {dep} cannot be satisfied", file=sys.stderr)
             error = True
 
     if error:

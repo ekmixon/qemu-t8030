@@ -54,23 +54,28 @@ class TestRefcountTableGrowth(iotests.QMPTestCase):
             # Write a refcount table
             fd.seek(off_reftable)
 
-            for i in range(0, h.refcount_table_clusters):
-                sector = b''.join(struct.pack('>Q',
-                    off_refblock + i * 64 * 512 + j * 512)
-                    for j in range(0, 64))
+            for i in range(h.refcount_table_clusters):
+                sector = b''.join(
+                    struct.pack('>Q', off_refblock + i * 64 * 512 + j * 512)
+                    for j in range(64)
+                )
+
                 fd.write(sector)
 
             # Write the refcount blocks
             assert(fd.tell() == off_refblock)
-            sector = b''.join(struct.pack('>H', 1) for j in range(0, 64 * 256))
-            for block in range(0, h.refcount_table_clusters):
+            sector = b''.join(struct.pack('>H', 1) for j in range(64 * 256))
+            for _ in range(h.refcount_table_clusters):
                 fd.write(sector)
 
             # Write the L1 table
             assert(fd.tell() == off_l1)
             assert(off_l2 + 512 * h.l1_size == off_data)
-            table = b''.join(struct.pack('>Q', (1 << 63) | off_l2 + 512 * j)
-                for j in range(0, h.l1_size))
+            table = b''.join(
+                struct.pack('>Q', (1 << 63) | off_l2 + 512 * j)
+                for j in range(h.l1_size)
+            )
+
             fd.write(table)
 
             # Write the L2 tables
@@ -80,15 +85,17 @@ class TestRefcountTableGrowth(iotests.QMPTestCase):
 
             off = off_data
             while remaining > 1024 * 512:
-                pytable = list((1 << 63) | off + 512 * j
-                    for j in range(0, 1024))
+                pytable = [(1 << 63) | off + 512 * j for j in range(1024)]
                 table = struct.pack('>1024Q', *pytable)
                 fd.write(table)
                 remaining = remaining - 1024 * 512
                 off = off + 1024 * 512
 
-            table = b''.join(struct.pack('>Q', (1 << 63) | off + 512 * j)
-                for j in range(0, remaining // 512))
+            table = b''.join(
+                struct.pack('>Q', (1 << 63) | off + 512 * j)
+                for j in range(remaining // 512)
+            )
+
             fd.write(table)
 
 
@@ -103,17 +110,14 @@ class TestRefcountTableGrowth(iotests.QMPTestCase):
     def setUp(self):
         qemu_img('create', '-f', iotests.imgfmt, '-o', 'cluster_size=512', test_img, '16G')
         self.preallocate(test_img)
-        pass
 
 
     def tearDown(self):
         os.remove(test_img)
-        pass
 
     def test_grow_refcount_table(self):
         qemu_io('-c', 'write 3800M 1M', test_img)
         qemu_img_verbose('check' , test_img)
-        pass
 
 if __name__ == '__main__':
     iotests.main(supported_fmts=['qcow2'],

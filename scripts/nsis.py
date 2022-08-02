@@ -13,10 +13,10 @@ import tempfile
 
 
 def signcode(path):
-    cmd = os.environ.get("SIGNCODE")
-    if not cmd:
+    if cmd := os.environ.get("SIGNCODE"):
+        subprocess.run([cmd, path])
+    else:
         return
-    subprocess.run([cmd, path])
 
 
 def main():
@@ -30,7 +30,7 @@ def main():
 
     destdir = tempfile.mkdtemp()
     try:
-        subprocess.run(["make", "install", "DESTDIR=" + destdir + os.path.sep])
+        subprocess.run(["make", "install", f"DESTDIR={destdir}{os.path.sep}"])
         with open(
             os.path.join(destdir + args.prefix, "system-emulations.nsh"), "w"
         ) as nsh:
@@ -57,9 +57,10 @@ def main():
             "makensis",
             "-V2",
             "-NOCD",
-            "-DSRCDIR=" + args.srcdir,
-            "-DBINDIR=" + destdir + args.prefix,
+            f"-DSRCDIR={args.srcdir}",
+            f"-DBINDIR={destdir}{args.prefix}",
         ]
+
         dlldir = "w32"
         if args.cpu == "x86_64":
             dlldir = "w64"
@@ -67,7 +68,7 @@ def main():
         if os.path.exists(os.path.join(args.srcdir, "dll")):
             makensis += ["-DDLLDIR={0}/dll/{1}".format(args.srcdir, dlldir)]
 
-        makensis += ["-DOUTFILE=" + args.outfile] + args.nsisargs
+        makensis += [f"-DOUTFILE={args.outfile}"] + args.nsisargs
         subprocess.run(makensis)
         signcode(args.outfile)
     finally:

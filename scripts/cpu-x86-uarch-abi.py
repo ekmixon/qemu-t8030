@@ -84,12 +84,10 @@ skip = [
     "stepping",
 ]
 
-names = []
+names = [
+    model["name"] for model in models["return"] if "alias-of" not in model
+]
 
-for model in models["return"]:
-    if "alias-of" in model:
-        continue
-    names.append(model["name"])
 
 models = {}
 
@@ -98,10 +96,11 @@ for name in sorted(names):
                      { "type": "static",
                        "model": { "name": name }})
 
-    got = {}
-    for (feature, present) in cpu["return"]["model"]["props"].items():
-        if present and feature not in skip:
-            got[feature] = True
+    got = {
+        feature: True
+        for feature, present in cpu["return"]["model"]["props"].items()
+        if present and feature not in skip
+    }
 
     if name in ["host", "max", "base"]:
         continue
@@ -125,7 +124,7 @@ for name in sorted(names):
 
 
 # Calculate whether the CPU models satisfy each ABI level
-for name in models.keys():
+for name in models:
     for level in range(len(levels)):
         got = set(models[name]["features"])
         want = set(levels[level])
@@ -144,9 +143,9 @@ abi_models = [
     [],
 ]
 
-for name in models.keys():
+for name, value in models.items():
     for level in range(len(levels)):
-        if models[name]["levels"][level]:
+        if value["levels"][level]:
             abi_models[level].append(name)
 
 
@@ -161,8 +160,8 @@ for level in range(len(abi_models)):
     commonfeatures = []
     for feat in allfeatures:
         present = True
-        for name in models.keys():
-            if not models[name]["levels"][level]:
+        for name, value_ in models.items():
+            if not value_["levels"][level]:
                 continue
             if feat not in models[name]["features"]:
                 present = False
@@ -171,8 +170,8 @@ for level in range(len(abi_models)):
 
     # Determine how many extra features are present compared to the lowest
     # common denominator
-    for name in models.keys():
-        if not models[name]["levels"][level]:
+    for name, value__ in models.items():
+        if not value__["levels"][level]:
             continue
 
         delta = set(models[name]["features"].keys()) - set(commonfeatures)

@@ -71,22 +71,22 @@ class Plot(object):
     def _get_progress_label(self, progress):
         if progress:
             return "\n\n" + "\n".join(
-                ["Status: %s" % progress._status,
-                 "Iteration: %d" % progress._ram._iterations,
-                 "Throttle: %02d%%" % progress._throttle_pcent,
-                 "Dirty rate: %dMB/s" % (progress._ram._dirty_rate_pps * 4 / 1024.0)])
+                [
+                    f"Status: {progress._status}",
+                    "Iteration: %d" % progress._ram._iterations,
+                    "Throttle: %02d%%" % progress._throttle_pcent,
+                    "Dirty rate: %dMB/s"
+                    % (progress._ram._dirty_rate_pps * 4 / 1024.0),
+                ]
+            )
+
         else:
-            return "\n\n" + "\n".join(
-                ["Status: %s" % "none",
-                 "Iteration: %d" % 0])
+            return ("\n\n" + "\n".join(['Status: none', "Iteration: %d" % 0]))
 
     def _find_start_time(self, report):
         startqemu = report._qemu_timings._records[0]._timestamp
         startguest = report._guest_timings._records[0]._timestamp
-        if startqemu < startguest:
-            return startqemu
-        else:
-            return stasrtguest
+        return startqemu if startqemu < startguest else stasrtguest
 
     def _get_guest_max_value(self, report):
         maxvalue = 0
@@ -123,7 +123,7 @@ class Plot(object):
         for record in report._guest_timings._records:
             while ((progress_idx + 1) < len(report._progress_history) and
                    report._progress_history[progress_idx + 1]._now < record._timestamp):
-                progress_idx = progress_idx + 1
+                progress_idx += 1
 
             if progress_idx >= 0:
                 progress = report._progress_history[progress_idx]
@@ -135,17 +135,19 @@ class Plot(object):
             labels.append(self._get_progress_label(progress))
 
         from plotly import graph_objs as go
-        return go.Scatter(x=xaxis,
-                          y=yaxis,
-                          name="Guest PIDs: %s" % report._scenario._name,
-                          mode='lines',
-                          line={
-                              "dash": "solid",
-                              "color": self._next_color(),
-                              "shape": "linear",
-                              "width": 1
-                          },
-                          text=labels)
+        return go.Scatter(
+            x=xaxis,
+            y=yaxis,
+            name=f"Guest PIDs: {report._scenario._name}",
+            mode='lines',
+            line={
+                "dash": "solid",
+                "color": self._next_color(),
+                "shape": "linear",
+                "width": 1,
+            },
+            text=labels,
+        )
 
     def _get_split_guest_cpu_graphs(self, report, starttime):
         threads = {}
@@ -162,7 +164,7 @@ class Plot(object):
         for record in report._guest_timings._records:
             while ((progress_idx + 1) < len(report._progress_history) and
                    report._progress_history[progress_idx + 1]._now < record._timestamp):
-                progress_idx = progress_idx + 1
+                progress_idx += 1
 
             if progress_idx >= 0:
                 progress = report._progress_history[progress_idx]
@@ -174,22 +176,23 @@ class Plot(object):
             threads[record._tid]["labels"].append(self._get_progress_label(progress))
 
 
-        graphs = []
         from plotly import graph_objs as go
-        for tid in threads.keys():
-            graphs.append(
-                go.Scatter(x=threads[tid]["xaxis"],
-                           y=threads[tid]["yaxis"],
-                           name="PID %s: %s" % (tid, report._scenario._name),
-                           mode="lines",
-                           line={
-                               "dash": "solid",
-                               "color": self._next_color(),
-                               "shape": "linear",
-                               "width": 1
-                           },
-                           text=threads[tid]["labels"]))
-        return graphs
+        return [
+            go.Scatter(
+                x=value["xaxis"],
+                y=threads[tid]["yaxis"],
+                name=f"PID {tid}: {report._scenario._name}",
+                mode="lines",
+                line={
+                    "dash": "solid",
+                    "color": self._next_color(),
+                    "shape": "linear",
+                    "width": 1,
+                },
+                text=threads[tid]["labels"],
+            )
+            for tid, value in threads.items()
+        ]
 
     def _get_migration_iters_graph(self, report, starttime):
         xaxis = []
@@ -225,7 +228,7 @@ class Plot(object):
         for record in report._qemu_timings._records[1:]:
             while ((progress_idx + 1) < len(report._progress_history) and
                    report._progress_history[progress_idx + 1]._now < record._timestamp):
-                progress_idx = progress_idx + 1
+                progress_idx += 1
 
             if progress_idx >= 0:
                 progress = report._progress_history[progress_idx]
@@ -249,18 +252,20 @@ class Plot(object):
             labels.append(self._get_progress_label(progress))
 
         from plotly import graph_objs as go
-        return go.Scatter(x=xaxis,
-                          y=yaxis,
-                          yaxis="y2",
-                          name="QEMU: %s" % report._scenario._name,
-                          mode='lines',
-                          line={
-                              "dash": "solid",
-                              "color": self._next_color(),
-                              "shape": "linear",
-                              "width": 1
-                          },
-                          text=labels)
+        return go.Scatter(
+            x=xaxis,
+            y=yaxis,
+            yaxis="y2",
+            name=f"QEMU: {report._scenario._name}",
+            mode='lines',
+            line={
+                "dash": "solid",
+                "color": self._next_color(),
+                "shape": "linear",
+                "width": 1,
+            },
+            text=labels,
+        )
 
     def _get_vcpu_cpu_graphs(self, report, starttime):
         threads = {}
@@ -279,7 +284,7 @@ class Plot(object):
         for record in report._vcpu_timings._records:
             while ((progress_idx + 1) < len(report._progress_history) and
                    report._progress_history[progress_idx + 1]._now < record._timestamp):
-                progress_idx = progress_idx + 1
+                progress_idx += 1
 
             if progress_idx >= 0:
                 progress = report._progress_history[progress_idx]
@@ -294,9 +299,7 @@ class Plot(object):
             if timedelta == 0:
                 continue
             util = cpudelta / timedelta * 100.0
-            if util > 100:
-                util = 100
-
+            util = min(util, 100)
             threads[record._tid]["absvalue"].append(record._value)
             threads[record._tid]["abstime"].append(record._timestamp)
 
@@ -305,23 +308,24 @@ class Plot(object):
             threads[record._tid]["labels"].append(self._get_progress_label(progress))
 
 
-        graphs = []
         from plotly import graph_objs as go
-        for tid in threads.keys():
-            graphs.append(
-                go.Scatter(x=threads[tid]["xaxis"],
-                           y=threads[tid]["yaxis"],
-                           yaxis="y2",
-                           name="VCPU %s: %s" % (tid, report._scenario._name),
-                           mode="lines",
-                           line={
-                               "dash": "solid",
-                               "color": self._next_color(),
-                               "shape": "linear",
-                               "width": 1
-                           },
-                           text=threads[tid]["labels"]))
-        return graphs
+        return [
+            go.Scatter(
+                x=value["xaxis"],
+                y=threads[tid]["yaxis"],
+                yaxis="y2",
+                name=f"VCPU {tid}: {report._scenario._name}",
+                mode="lines",
+                line={
+                    "dash": "solid",
+                    "color": self._next_color(),
+                    "shape": "linear",
+                    "width": 1,
+                },
+                text=threads[tid]["labels"],
+            )
+            for tid, value in threads.items()
+        ]
 
     def _generate_chart_report(self, report):
         graphs = []

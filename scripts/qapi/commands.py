@@ -63,13 +63,10 @@ def gen_call(name: str,
         assert not arg_type.variants
         for memb in arg_type.members:
             if memb.optional:
-                argstr += 'arg.has_%s, ' % c_name(memb.name)
-            argstr += 'arg.%s, ' % c_name(memb.name)
+                argstr += f'arg.has_{c_name(memb.name)}, '
+            argstr += f'arg.{c_name(memb.name)}, '
 
-    lhs = ''
-    if ret_type:
-        lhs = 'retval = '
-
+    lhs = 'retval = ' if ret_type else ''
     ret = mcgen('''
 
     %(lhs)sqmp_%(c_name)s(%(args)s&err);
@@ -110,8 +107,7 @@ static void qmp_marshal_output_%(c_name)s(%(c_type)s ret_in,
 
 
 def build_marshal_proto(name: str) -> str:
-    return ('void qmp_marshal_%s(QDict *args, QObject **ret, Error **errp)'
-            % c_name(name))
+    return f'void qmp_marshal_{c_name(name)}(QDict *args, QObject **ret, Error **errp)'
 
 
 def gen_marshal_decl(name: str) -> str:
@@ -232,13 +228,15 @@ def gen_register_command(name: str,
     if not options:
         options = ['QCO_NO_OPTIONS']
 
-    ret = mcgen('''
+    return mcgen(
+        '''
     qmp_register_command(cmds, "%(name)s",
                          qmp_marshal_%(c_name)s, %(opts)s);
 ''',
-                name=name, c_name=c_name(name),
-                opts=" | ".join(options))
-    return ret
+        name=name,
+        c_name=c_name(name),
+        opts=" | ".join(options),
+    )
 
 
 class QAPISchemaGenCommandVisitor(QAPISchemaModularCVisitor):

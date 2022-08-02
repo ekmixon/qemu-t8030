@@ -27,6 +27,7 @@ import hex_common
 ##
 def calculate_regid_reg(tag):
     def letter_inc(x): return chr(ord(x)+1)
+
     ordered_implregs = [ 'SP','FP','LR' ]
     srcdst_lett = 'X'
     src_lett = 'S'
@@ -36,7 +37,7 @@ def calculate_regid_reg(tag):
     for reg in ordered_implregs:
         reg_rd = 0
         reg_wr = 0
-        if ('A_IMPLICIT_WRITES_'+reg) in hex_common.attribdict[tag]: reg_wr = 1
+        if f'A_IMPLICIT_WRITES_{reg}' in hex_common.attribdict[tag]: reg_wr = 1
         if reg_rd and reg_wr:
             retstr += srcdst_lett
             mapdict[srcdst_lett] = reg
@@ -90,7 +91,7 @@ def main():
 
         for tag in hex_common.tags:
             imms = tagimms[tag]
-            f.write( 'IMMINFO(%s' % tag)
+            f.write(f'IMMINFO({tag}')
             if not imms:
                 f.write(''','u',0,0,'U',0,0''')
             for sign,size,shamt in imms:
@@ -99,10 +100,7 @@ def main():
                     shamt = "0"
                 f.write(''','%s',%s,%s''' % (sign,size,shamt))
             if len(imms) == 1:
-                if sign.isupper():
-                    myu = 'u'
-                else:
-                    myu = 'U'
+                myu = 'u' if sign.isupper() else 'U'
                 f.write(''','%s',0,0''' % myu)
             f.write(')\n')
 

@@ -267,9 +267,7 @@ class QEMUMonitorProtocol:
         """
         self.__sock.connect(self.__address)
         self.__sockfile = self.__sock.makefile(mode='r')
-        if negotiate:
-            return self.__negotiate_capabilities()
-        return None
+        return self.__negotiate_capabilities() if negotiate else None
 
     def accept(self, timeout: Optional[float] = 15.0) -> QMPMessage:
         """
@@ -333,9 +331,7 @@ class QEMUMonitorProtocol:
         if 'error' in ret:
             raise QMPResponseError(ret)
         if 'return' not in ret:
-            raise QMPProtocolError(
-                "'return' key not found in QMP response '{}'".format(str(ret))
-            )
+            raise QMPProtocolError(f"'return' key not found in QMP response '{str(ret)}'")
         return cast(QMPReturnValue, ret['return'])
 
     def pull_event(self,
@@ -355,9 +351,7 @@ class QEMUMonitorProtocol:
         """
         self.__get_events(wait)
 
-        if self.__events:
-            return self.__events.pop(0)
-        return None
+        return self.__events.pop(0) if self.__events else None
 
     def get_events(self, wait: bool = False) -> List[QMPMessage]:
         """
@@ -401,8 +395,11 @@ class QEMUMonitorProtocol:
         @raise ValueError: if timeout was set to 0.
         """
         if timeout == 0:
-            msg = "timeout cannot be 0; this engages non-blocking mode."
-            msg += " Use 'None' instead to disable timeouts."
+            msg = (
+                "timeout cannot be 0; this engages non-blocking mode."
+                + " Use 'None' instead to disable timeouts."
+            )
+
             raise ValueError(msg)
         self.__sock.settimeout(timeout)
 

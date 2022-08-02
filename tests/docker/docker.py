@@ -95,20 +95,19 @@ def _guess_engine_command():
 
 def _copy_with_mkdir(src, root_dir, sub_path='.', name=None):
     """Copy src into root_dir, creating sub_path as needed."""
-    dest_dir = os.path.normpath("%s/%s" % (root_dir, sub_path))
+    dest_dir = os.path.normpath(f"{root_dir}/{sub_path}")
     try:
         os.makedirs(dest_dir)
     except OSError:
         # we can safely ignore already created directories
         pass
 
-    dest_file = "%s/%s" % (dest_dir, name if name else os.path.basename(src))
+    dest_file = f"{dest_dir}/{name or os.path.basename(src)}"
 
     try:
         copy(src, dest_file)
     except FileNotFoundError:
         print("Couldn't copy %s to %s" % (src, dest_file))
-        pass
 
 
 def _get_so_libs(executable):
@@ -122,14 +121,13 @@ def _get_so_libs(executable):
     try:
         ldd_output = subprocess.check_output(["ldd", executable]).decode('utf-8')
         for line in ldd_output.split("\n"):
-            search = ldd_re.search(line)
-            if search:
+            if search := ldd_re.search(line):
                 try:
-                    libs.append(search.group(1))
+                    libs.append(search[1])
                 except IndexError:
                     pass
     except subprocess.CalledProcessError:
-        print("%s had no associated libraries (static build?)" % (executable))
+        print(f"{executable} had no associated libraries (static build?)")
 
     return libs
 
@@ -149,10 +147,9 @@ def _copy_binary_with_libs(src, bin_dest, dest_dir):
     if bin_dest:
         _copy_with_mkdir(src, dest_dir, os.path.dirname(bin_dest))
     else:
-        print("only copying support libraries for %s" % (src))
+        print(f"only copying support libraries for {src}")
 
-    libs = _get_so_libs(src)
-    if libs:
+    if libs := _get_so_libs(src):
         for l in libs:
             so_path = os.path.dirname(l)
             name = os.path.basename(l)
@@ -173,24 +170,25 @@ def _check_binfmt_misc(executable):
     """
 
     binary = os.path.basename(executable)
-    binfmt_entry = "/proc/sys/fs/binfmt_misc/%s" % (binary)
+    binfmt_entry = f"/proc/sys/fs/binfmt_misc/{binary}"
 
     if not os.path.exists(binfmt_entry):
-        print ("No binfmt_misc entry for %s" % (binary))
+        print(f"No binfmt_misc entry for {binary}")
         return None, False
 
     with open(binfmt_entry) as x: entry = x.read()
 
     if re.search("flags:.*F.*\n", entry):
-        print("binfmt_misc for %s uses persistent(F) mapping to host binary" %
-              (binary))
+        print(f"binfmt_misc for {binary} uses persistent(F) mapping to host binary")
         return None, True
 
     m = re.search("interpreter (\S+)\n", entry)
-    interp = m.group(1)
+    interp = m[1]
     if interp and interp != executable:
-        print("binfmt_misc for %s does not point to %s, using %s" %
-              (binary, executable, interp))
+        print(
+            f"binfmt_misc for {binary} does not point to {executable}, using {interp}"
+        )
+
 
     return interp, True
 
@@ -200,8 +198,10 @@ def _read_qemu_dockerfile(img_name):
     if img_name.startswith("debian") and img_name.endswith("user"):
         img_name = "debian-bootstrap"
 
-    df = os.path.join(os.path.dirname(__file__), "dockerfiles",
-                      img_name + ".docker")
+    df = os.path.join(
+        os.path.dirname(__file__), "dockerfiles", f"{img_name}.docker"
+    )
+
     return _read_dockerfile(df)
 
 
@@ -259,12 +259,12 @@ class Docker(object):
         filter = "--filter=label=com.qemu.instance.uuid"
         if only_known:
             if self._instance:
-                filter += "=%s" % (self._instance)
+                filter += f"={self._instance}"
             else:
                 # no point trying to kill, we finished
                 return
 
-        print("filter=%s" % (filter))
+        print(f"filter={filter}")
         cmd.append(filter)
         for i in self._output(cmd).split():
             self._do(["rm", "-f", i])
@@ -317,15 +317,13 @@ class Docker(object):
             sources = re.findall("FROM qemu\/(.*)", dockerfile)
             # Fetch any cache layers we can, may fail
             for s in sources:
-                pull_args = ["pull", "%s/qemu/%s" % (registry, s)]
+                pull_args = ["pull", f"{registry}/qemu/{s}"]
                 if self._do(pull_args, quiet=quiet) != 0:
                     registry = None
                     break
             # Make substitutions
-            if registry is not None:
-                dockerfile = dockerfile.replace("FROM qemu/",
-                                                "FROM %s/qemu/" %
-                                                (registry))
+        if registry is not None:
+            dockerfile = dockerfile.replace("FROM qemu/", f"FROM {registry}/qemu/")
 
         tmp_df = tempfile.NamedTemporaryFile(mode="w+t",
                                              encoding='utf-8',
@@ -351,9 +349,9 @@ class Docker(object):
             build_args += ["--build-arg", "BUILDKIT_INLINE_CACHE=1"]
 
         if registry is not None:
-            pull_args = ["pull", "%s/%s" % (registry, tag)]
+            pull_args = ["pull", f"{registry}/{tag}"]
             self._do(pull_args, quiet=quiet)
-            cache = "%s/%s" % (registry, tag)
+            cache = f"{registry}/{tag}"
             build_args += ["--cache-from", cache]
         build_args += argv
         build_args += [docker_dir]
@@ -385,9 +383,11 @@ class Docker(object):
             if self._command[0] == "podman":
                 cmd.insert(0, '--userns=keep-id')
 
-        ret = self._do_check(["run", "--rm", "--label",
-                             "com.qemu.instance.uuid=" + label] + cmd,
-                             quiet=quiet)
+        ret = self._do_check(
+            (["run", "--rm", "--label", f"com.qemu.instance.uuid={label}"] + cmd),
+            quiet=quiet,
+        )
+
         if not keep:
             self._instance = None
         return ret
@@ -463,7 +463,7 @@ class BuildCommand(SubCommand):
 
         dkr = Docker()
         if "--no-cache" not in argv and \
-           dkr.image_matches_dockerfile(tag, dockerfile):
+               dkr.image_matches_dockerfile(tag, dockerfile):
             if not args.quiet:
                 print("Image is up to date.")
         else:
@@ -479,7 +479,7 @@ class BuildCommand(SubCommand):
                     return 1
 
             # Is there a .pre file to run in the build context?
-            docker_pre = os.path.splitext(args.dockerfile)[0]+".pre"
+            docker_pre = f"{os.path.splitext(args.dockerfile)[0]}.pre"
             if os.path.exists(docker_pre):
                 stdout = DEVNULL if args.quiet else None
                 rc = subprocess.call(os.path.realpath(docker_pre),
@@ -505,9 +505,12 @@ class BuildCommand(SubCommand):
                 _copy_with_mkdir(filename, docker_dir)
                 cksum += [(filename, _file_checksum(filename))]
 
-            argv += ["--build-arg=" + k.lower() + "=" + v
-                     for k, v in os.environ.items()
-                     if k.lower() in FILTERED_ENV_NAMES]
+            argv += [
+                f"--build-arg={k.lower()}={v}"
+                for k, v in os.environ.items()
+                if k.lower() in FILTERED_ENV_NAMES
+            ]
+
             dkr.build_image(tag, docker_dir, dockerfile,
                             quiet=args.quiet, user=args.user,
                             argv=argv, registry=args.registry,
@@ -529,10 +532,12 @@ class FetchCommand(SubCommand):
 
     def run(self, args, argv):
         dkr = Docker()
-        dkr.command(cmd="pull", quiet=args.quiet,
-                    argv=["%s/%s" % (args.registry, args.tag)])
-        dkr.command(cmd="tag", quiet=args.quiet,
-                    argv=["%s/%s" % (args.registry, args.tag), args.tag])
+        dkr.command(cmd="pull", quiet=args.quiet, argv=[f"{args.registry}/{args.tag}"])
+        dkr.command(
+            cmd="tag",
+            quiet=args.quiet,
+            argv=[f"{args.registry}/{args.tag}", args.tag],
+        )
 
 
 class UpdateCommand(SubCommand):
@@ -571,19 +576,15 @@ class UpdateCommand(SubCommand):
             if ff:
                 tmp_tar.add(args.executable, arcname=ff)
 
-            # Add any associated libraries
-            libs = _get_so_libs(args.executable)
-            if libs:
+            if libs := _get_so_libs(args.executable):
                 for l in libs:
                     so_path = os.path.dirname(l)
                     name = os.path.basename(l)
                     real_l = os.path.realpath(l)
                     try:
-                        tmp_tar.add(real_l, arcname="%s/%s" % (so_path, name))
+                        tmp_tar.add(real_l, arcname=f"{so_path}/{name}")
                     except FileNotFoundError:
                         print("Couldn't add %s/%s to archive" % (so_path, name))
-                        pass
-
             df.write(u"ADD . /\n")
 
         if args.user:
@@ -665,11 +666,10 @@ class CcCommand(SubCommand):
         if argv and argv[0] == "--":
             argv = argv[1:]
         cwd = os.getcwd()
-        cmd = ["-w", cwd,
-               "-v", "%s:%s:rw" % (cwd, cwd)]
+        cmd = ["-w", cwd, "-v", f"{cwd}:{cwd}:rw"]
         if args.paths:
             for p in args.paths:
-                cmd += ["-v", "%s:%s:ro,z" % (p, p)]
+                cmd += ["-v", f"{p}:{p}:ro,z"]
         cmd += [args.image, args.cc]
         cmd += argv
         return Docker().run(cmd, False, quiet=args.quiet,
@@ -707,7 +707,7 @@ class CheckCommand(SubCommand):
 
         if args.checktype == "checksum":
             if not args.dockerfile:
-                print("Need a dockerfile for tag:%s" % (tag))
+                print(f"Need a dockerfile for tag:{tag}")
                 return 1
 
             dockerfile = _read_dockerfile(args.dockerfile)
@@ -736,9 +736,11 @@ class CheckCommand(SubCommand):
 def main():
     global USE_ENGINE
 
-    parser = argparse.ArgumentParser(description="A Docker helper",
-                                     usage="%s <subcommand> ..." %
-                                     os.path.basename(sys.argv[0]))
+    parser = argparse.ArgumentParser(
+        description="A Docker helper",
+        usage=f"{os.path.basename(sys.argv[0])} <subcommand> ...",
+    )
+
     parser.add_argument("--engine", type=EngineEnum.argparse, choices=list(EngineEnum),
                         help="specify which container engine to use")
     subparsers = parser.add_subparsers(title="subcommands", help=None)

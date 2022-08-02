@@ -50,7 +50,7 @@ class MaltaMachineFramebuffer(Test):
                       'vmlinux-4.7.0-rc1.I6400.gz')
         kernel_hash = '096f50c377ec5072e6a366943324622c312045f6'
         kernel_path_gz = self.fetch_asset(kernel_url, asset_hash=kernel_hash)
-        kernel_path = self.workdir + "vmlinux"
+        kernel_path = f"{self.workdir}vmlinux"
         archive.gzip_uncompress(kernel_path_gz, kernel_path)
 
         tuxlogo_url = ('https://github.com/torvalds/linux/raw/v2.6.12/'
@@ -70,8 +70,10 @@ class MaltaMachineFramebuffer(Test):
         wait_for_console_pattern(self, framebuffer_ready,
                                  failure_message='Kernel panic - not syncing')
         self.vm.command('human-monitor-command', command_line='stop')
-        self.vm.command('human-monitor-command',
-                        command_line='screendump %s' % screendump_path)
+        self.vm.command(
+            'human-monitor-command', command_line=f'screendump {screendump_path}'
+        )
+
         logger = logging.getLogger('framebuffer')
 
         match_threshold = 0.95

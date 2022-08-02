@@ -59,9 +59,7 @@ class PluginKernelNormal(PluginKernelBase):
                       'linux-image-4.19.0-12-arm64_4.19.152-1_arm64.deb')
         kernel_sha1 = '2036c2792f80ac9c4ccaae742b2e0a28385b6010'
         kernel_deb = self.fetch_asset(kernel_url, asset_hash=kernel_sha1)
-        kernel_path = self.extract_from_deb(kernel_deb,
-                                            "/boot/vmlinuz-4.19.0-12-arm64")
-        return kernel_path
+        return self.extract_from_deb(kernel_deb, "/boot/vmlinuz-4.19.0-12-arm64")
 
     def test_aarch64_virt_insn(self):
         """
@@ -83,7 +81,7 @@ class PluginKernelNormal(PluginKernelBase):
                     console_pattern)
 
         with plugin_log as lf, \
-             mmap.mmap(lf.fileno(), 0, access=mmap.ACCESS_READ) as s:
+                 mmap.mmap(lf.fileno(), 0, access=mmap.ACCESS_READ) as s:
 
             m = re.search(br"insns: (?P<count>\d+)", s)
             if "count" not in m.groupdict():
@@ -110,7 +108,7 @@ class PluginKernelNormal(PluginKernelBase):
                     args=('-icount', 'shift=1'))
 
         with plugin_log as lf, \
-             mmap.mmap(lf.fileno(), 0, access=mmap.ACCESS_READ) as s:
+                 mmap.mmap(lf.fileno(), 0, access=mmap.ACCESS_READ) as s:
             m = re.search(br"detected repeat execution @ (?P<addr>0x[0-9A-Fa-f]+)", s)
             if m is not None and "addr" in m.groupdict():
                 self.fail("detected repeated instructions")
@@ -136,7 +134,7 @@ class PluginKernelNormal(PluginKernelBase):
                     args=('-icount', 'shift=1'))
 
         with plugin_log as lf, \
-             mmap.mmap(lf.fileno(), 0, access=mmap.ACCESS_READ) as s:
+                 mmap.mmap(lf.fileno(), 0, access=mmap.ACCESS_READ) as s:
             m = re.findall(br"mem accesses: (?P<count>\d+)", s)
             if m is None or len(m) != 2:
                 self.fail("no memory access counts found")

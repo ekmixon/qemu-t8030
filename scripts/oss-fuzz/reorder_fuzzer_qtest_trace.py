@@ -73,7 +73,7 @@ __email__      = "alxndr@bu.edu"
 
 
 def usage():
-    sys.exit("Usage: {} /path/to/qtest_log_output".format((sys.argv[0])))
+    sys.exit(f"Usage: {sys.argv[0]} /path/to/qtest_log_output")
 
 
 def main(filename):
@@ -85,14 +85,13 @@ def main(filename):
                 or "[S +" in x and "CLOSED" not in x]
 
     for i in range(len(trace)):
-        if i+1 < len(trace):
-            if "[DMA]" in trace[i+1]:
-                if "[DOUBLE-FETCH]" in trace[i+1]:
-                    sys.stderr.write("Warning: Likely double fetch on line"
-                                     "{}.\n There will likely be problems "
-                                     "reproducing behavior with the "
-                                     "resulting qtest trace\n\n".format(i+1))
-                trace[i], trace[i+1] = trace[i+1], trace[i]
+        if i + 1 < len(trace) and "[DMA]" in trace[i + 1]:
+            if "[DOUBLE-FETCH]" in trace[i+1]:
+                sys.stderr.write(
+                    f"Warning: Likely double fetch on line{i + 1}.\n There will likely be problems reproducing behavior with the resulting qtest trace\n\n"
+                )
+
+            trace[i], trace[i+1] = trace[i+1], trace[i]
     for line in trace:
         print(line.split("]")[-1].strip())
 

@@ -108,10 +108,7 @@ class QOMFuse(QOMCommand, Operations):
         if path == '':
             path = '/'
         try:
-            for item in self.qom_list(path):
-                if item.name == prop:
-                    return True
-            return False
+            return any(item.name == prop for item in self.qom_list(path))
         except QMPResponseError:
             return False
 
@@ -121,10 +118,7 @@ class QOMFuse(QOMCommand, Operations):
         if path == '':
             path = '/'
         try:
-            for item in self.qom_list(path):
-                if item.name == prop and item.link:
-                    return True
-            return False
+            return any(item.name == prop and item.link for item in self.qom_list(path))
         except QMPResponseError:
             return False
 
@@ -136,8 +130,7 @@ class QOMFuse(QOMCommand, Operations):
         if path == '':
             path = '/'
         try:
-            data = str(self.qmp.command('qom-get', path=path, property=prop))
-            data += '\n'  # make values shell friendly
+            data = str(self.qmp.command('qom-get', path=path, property=prop)) + '\n'
         except QMPResponseError as err:
             raise FuseOSError(EPERM) from err
 

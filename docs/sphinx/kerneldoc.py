@@ -74,7 +74,7 @@ class KernelDocDirective(Directive):
         # Sphinx versions
         cmd += ['-sphinx-version', sphinx.__version__]
 
-        filename = env.config.kerneldoc_srctree + '/' + self.arguments[0]
+        filename = f'{env.config.kerneldoc_srctree}/{self.arguments[0]}'
         export_file_patterns = []
 
         # Tell sphinx of the dependency
@@ -92,15 +92,14 @@ class KernelDocDirective(Directive):
         elif 'doc' in self.options:
             cmd += ['-function', str(self.options.get('doc'))]
         elif 'functions' in self.options:
-            functions = self.options.get('functions').split()
-            if functions:
+            if functions := self.options.get('functions').split():
                 for f in functions:
                     cmd += ['-function', f]
             else:
                 cmd += ['-no-doc-sections']
 
         for pattern in export_file_patterns:
-            for f in glob.glob(env.config.kerneldoc_srctree + '/' + pattern):
+            for f in glob.glob(f'{env.config.kerneldoc_srctree}/{pattern}'):
                 env.note_dependency(os.path.abspath(f))
                 cmd += ['-export-file', f]
 
@@ -130,11 +129,9 @@ class KernelDocDirective(Directive):
             lineoffset = 0;
             line_regex = re.compile("^#define LINENO ([0-9]+)$")
             for line in lines:
-                match = line_regex.search(line)
-                if match:
+                if match := line_regex.search(line):
                     # sphinx counts lines from 0
-                    lineoffset = int(match.group(1)) - 1
-                    # we must eat our comments since the upset the markup
+                    lineoffset = int(match[1]) - 1
                 else:
                     result.append(line, filename, lineoffset)
                     lineoffset += 1

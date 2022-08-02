@@ -74,8 +74,8 @@ class VirtioVersionCheck(Test):
         with QEMUMachine(self.qemu_bin) as vm:
             vm.set_machine(machine)
             if opts:
-                devtype += ',' + opts
-            vm.add_args('-device', '%s,id=devfortest' % (devtype))
+                devtype += f',{opts}'
+            vm.add_args('-device', f'{devtype},id=devfortest')
             vm.add_args('-S')
             vm.launch()
 
@@ -103,7 +103,7 @@ class VirtioVersionCheck(Test):
 
         # <prefix>-non-transitional device types should be 100% equivalent to
         # <prefix>,disable-modern=off,disable-legacy=on
-        dev_1_0, nt_ifaces = self.run_device('%s-non-transitional' % (qemu_devtype))
+        dev_1_0, nt_ifaces = self.run_device(f'{qemu_devtype}-non-transitional')
         self.assertEqual(dev_modern, dev_1_0)
 
         # Force transitional mode:
@@ -127,7 +127,7 @@ class VirtioVersionCheck(Test):
 
         # <prefix>-transitional device types should be 100% equivalent to
         # <prefix>,disable-modern=off,disable-legacy=off
-        dev_trans, trans_ifaces = self.run_device('%s-transitional' % (qemu_devtype))
+        dev_trans, trans_ifaces = self.run_device(f'{qemu_devtype}-transitional')
         self.assertEqual(dev_trans, dev_trans)
 
         # ensure the interface information is correct:

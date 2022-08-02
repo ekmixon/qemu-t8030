@@ -60,7 +60,7 @@ def gen_param_var(typ: QAPISchemaObjectType) -> str:
         ret += sep
         sep = ', '
         if memb.optional:
-            ret += 'has_' + c_name(memb.name) + sep
+            ret += f'has_{c_name(memb.name)}{sep}'
         if memb.type.name == 'str':
             # Cast away const added in build_params()
             ret += '(char *)'
@@ -128,20 +128,28 @@ def gen_event_send(name: str,
         ret += mcgen('''
     v = qobject_output_visitor_new_qmp(&obj);
 ''')
-        if not arg_type.is_implicit():
-            ret += mcgen('''
-    visit_type_%(c_name)s(v, "%(name)s", &arg, &error_abort);
-''',
-                         name=name, c_name=arg_type.c_name())
-        else:
-            ret += mcgen('''
+        ret += (
+            mcgen(
+                '''
 
     visit_start_struct(v, "%(name)s", NULL, 0, &error_abort);
     visit_type_%(c_name)s_members(v, &param, &error_abort);
     visit_check_struct(v, &error_abort);
     visit_end_struct(v, NULL);
 ''',
-                         name=name, c_name=arg_type.c_name())
+                name=name,
+                c_name=arg_type.c_name(),
+            )
+            if arg_type.is_implicit()
+            else mcgen(
+                '''
+    visit_type_%(c_name)s(v, "%(name)s", &arg, &error_abort);
+''',
+                name=name,
+                c_name=arg_type.c_name(),
+            )
+        )
+
         ret += mcgen('''
 
     visit_complete(v, &obj);
@@ -176,9 +184,9 @@ class QAPISchemaGenEventVisitor(QAPISchemaModularCVisitor):
         super().__init__(
             prefix, 'qapi-events',
             ' * Schema-defined QAPI/QMP events', None, __doc__)
-        self._event_enum_name = c_name(prefix + 'QAPIEvent', protect=False)
+        self._event_enum_name = c_name(f'{prefix}QAPIEvent', protect=False)
         self._event_enum_members: List[QAPISchemaEnumMember] = []
-        self._event_emit_name = c_name(prefix + 'qapi_event_emit')
+        self._event_emit_name = c_name(f'{prefix}qapi_event_emit')
 
     def _begin_user_module(self, name: str) -> None:
         events = self._module_basename('qapi-events', name)

@@ -34,7 +34,7 @@ def io_write_patterns(img, patterns):
 def transaction_action(action, **kwargs):
     return {
         'type': action,
-        'data': dict((k.replace('_', '-'), v) for k, v in kwargs.items())
+        'data': {k.replace('_', '-'): v for k, v in kwargs.items()},
     }
 
 
@@ -53,7 +53,7 @@ class Bitmap:
         self.name = name
         self.drive = drive
         self.num = 0
-        self.backups = list()
+        self.backups = []
 
     def base_target(self):
         return (self.drive['backup'], None)
@@ -62,18 +62,15 @@ class Bitmap:
         if num is None:
             num = self.num
         self.num = num + 1
-        base = os.path.join(iotests.test_dir,
-                            "%s.%s." % (self.drive['id'], self.name))
+        base = os.path.join(iotests.test_dir, f"{self.drive['id']}.{self.name}.")
         suff = "%i.%s" % (num, self.drive['fmt'])
-        target = base + "inc" + suff
-        reference = base + "ref" + suff
+        target = f"{base}inc{suff}"
+        reference = f"{base}ref{suff}"
         self.backups.append((target, reference))
         return (target, reference)
 
     def last_target(self):
-        if self.backups:
-            return self.backups[-1]
-        return self.base_target()
+        return self.backups[-1] if self.backups else self.base_target()
 
     def del_target(self):
         for image in self.backups.pop():
@@ -89,11 +86,11 @@ class Bitmap:
 class TestIncrementalBackupBase(iotests.QMPTestCase):
     def __init__(self, *args):
         super(TestIncrementalBackupBase, self).__init__(*args)
-        self.bitmaps = list()
-        self.files = list()
-        self.drives = list()
+        self.bitmaps = []
+        self.files = []
+        self.drives = []
         self.vm = iotests.VM()
-        self.err_img = os.path.join(iotests.test_dir, 'err.%s' % iotests.imgfmt)
+        self.err_img = os.path.join(iotests.test_dir, f'err.{iotests.imgfmt}')
 
 
     def setUp(self):
@@ -113,10 +110,9 @@ class TestIncrementalBackupBase(iotests.QMPTestCase):
 
     def add_node(self, node_id, fmt=iotests.imgfmt, path=None, backup=None):
         if path is None:
-            path = os.path.join(iotests.test_dir, '%s.%s' % (node_id, fmt))
+            path = os.path.join(iotests.test_dir, f'{node_id}.{fmt}')
         if backup is None:
-            backup = os.path.join(iotests.test_dir,
-                                  '%s.full.backup.%s' % (node_id, fmt))
+            backup = os.path.join(iotests.test_dir, f'{node_id}.full.backup.{fmt}')
 
         self.drives.append({
             'id': node_id,
@@ -130,7 +126,7 @@ class TestIncrementalBackupBase(iotests.QMPTestCase):
                    parent=None, parentFormat=None, **kwargs):
         optargs = []
         for k,v in kwargs.items():
-            optargs = optargs + ['-o', '%s=%s' % (k,v)]
+            optargs = optargs + ['-o', f'{k}={v}']
         args = ['create', '-f', fmt] + optargs + [img, size]
         if parent:
             if parentFormat is None:

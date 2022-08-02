@@ -92,13 +92,10 @@ def check_fields_match(name, s_field, d_field):
                       'io_win_size', 'mig_io_win_size'],
     }
 
-    if not name in changed_names:
+    if name not in changed_names:
         return False
 
-    if s_field in changed_names[name] and d_field in changed_names[name]:
-        return True
-
-    return False
+    return s_field in changed_names[name] and d_field in changed_names[name]
 
 def get_changed_sec_name(sec):
     # Section names can change -- see commit 292b1634 for an example.
@@ -120,10 +117,10 @@ def exists_in_substruct(fields, item):
     # something got shifted inside a substruct.  For example, the
     # change in commit 1f42d22233b4f3d1a2933ff30e8d6a6d9ee2d08f
 
-    if not "Description" in fields:
+    if "Description" not in fields:
         return False
 
-    if not "Fields" in fields["Description"]:
+    if "Fields" not in fields["Description"]:
         return False
 
     substruct_fields = fields["Description"]["Fields"]
@@ -159,22 +156,21 @@ def check_fields(src_fields, dest_fields, desc, sec):
             try:
                 s_item = next(s_iter)
             except StopIteration:
-                if s_iter_list == []:
+                if not s_iter_list:
                     break
 
                 s_iter = s_iter_list.pop()
                 continue
-        else:
-            if unused_count == 0:
-                # We want to avoid advancing just once -- when entering a
-                # dest substruct, or when exiting one.
-                advance_src = True
+        elif unused_count == 0:
+            # We want to avoid advancing just once -- when entering a
+            # dest substruct, or when exiting one.
+            advance_src = True
 
         if advance_dest:
             try:
                 d_item = next(d_iter)
             except StopIteration:
-                if d_iter_list == []:
+                if not d_iter_list:
                     # We were not in a substruct
                     print("Section \"" + sec + "\",", end=' ')
                     print("Description " + "\"" + desc + "\":", end=' ')
@@ -186,9 +182,8 @@ def check_fields(src_fields, dest_fields, desc, sec):
                 d_iter = d_iter_list.pop()
                 advance_src = False
                 continue
-        else:
-            if unused_count == 0:
-                advance_dest = True
+        elif unused_count == 0:
+            advance_dest = True
 
         if unused_count != 0:
             if advance_dest == False:
@@ -248,19 +243,20 @@ def check_fields(src_fields, dest_fields, desc, sec):
                 advance_dest = False
                 continue
 
-            if s_item["field"] == "unused" or d_item["field"] == "unused":
-                if s_item["size"] == d_item["size"]:
-                    continue
+            if (
+                s_item["field"] == "unused" or d_item["field"] == "unused"
+            ) and s_item["size"] == d_item["size"]:
+                continue
 
-                if d_item["field"] == "unused":
-                    advance_dest = False
-                    unused_count = d_item["size"] - s_item["size"]
-                    continue
+            if d_item["field"] == "unused":
+                advance_dest = False
+                unused_count = d_item["size"] - s_item["size"]
+                continue
 
-                if s_item["field"] == "unused":
-                    advance_src = False
-                    unused_count = s_item["size"] - d_item["size"]
-                    continue
+            if s_item["field"] == "unused":
+                advance_src = False
+                unused_count = s_item["size"] - d_item["size"]
+                continue
 
             print("Section \"" + sec + "\",", end=' ')
             print("Description \"" + desc + "\":", end=' ')
@@ -271,7 +267,7 @@ def check_fields(src_fields, dest_fields, desc, sec):
 
         check_version(s_item, d_item, sec, desc)
 
-        if not "Description" in s_item:
+        if "Description" not in s_item:
             # Check size of this field only if it's not a VMSTRUCT entry
             check_size(s_item, d_item, sec, desc, s_item["field"])
 
@@ -295,10 +291,10 @@ def check_subsections(src_sub, dest_sub, desc, sec):
 
 
 def check_description_in_list(s_item, d_item, sec, desc):
-    if not "Description" in s_item:
+    if "Description" not in s_item:
         return
 
-    if not "Description" in d_item:
+    if "Description" not in d_item:
         print("Section \"" + sec + "\", Description \"" + desc + "\",", end=' ')
         print("Field \"" + s_item["field"] + "\": missing description")
         bump_taint()
@@ -318,7 +314,7 @@ def check_descriptions(src_desc, dest_desc, sec):
         return
 
     for f in src_desc:
-        if not f in dest_desc:
+        if f not in dest_desc:
             print("Section \"" + sec + "\"", end=' ')
             print("Description \"" + src_desc["name"] + "\":", end=' ')
             print("Entry \"" + f + "\" missing")
@@ -340,7 +336,7 @@ def check_version(s, d, sec, desc=None):
         print("version error:", s["version_id"], ">", d["version_id"])
         bump_taint()
 
-    if not "minimum_version_id" in d:
+    if "minimum_version_id" not in d:
         return
 
     if s["version_id"] < d["minimum_version_id"]:
@@ -391,20 +387,17 @@ def main():
     args.dest.close()
 
     if args.reverse:
-        temp = src_data
-        src_data = dest_data
-        dest_data = temp
-
+        src_data, dest_data = dest_data, src_data
     for sec in src_data:
         dest_sec = sec
-        if not dest_sec in dest_data:
+        if dest_sec not in dest_data:
             # Either the section name got changed, or the section
             # doesn't exist in dest.
             dest_sec = get_changed_sec_name(sec)
-            if not dest_sec in dest_data:
-                print("Section \"" + sec + "\" does not exist in dest")
-                bump_taint()
-                continue
+        if dest_sec not in dest_data:
+            print("Section \"" + sec + "\" does not exist in dest")
+            bump_taint()
+            continue
 
         s = src_data[sec]
         d = dest_data[dest_sec]
@@ -416,7 +409,7 @@ def main():
         check_version(s, d, sec)
 
         for entry in s:
-            if not entry in d:
+            if entry not in d:
                 print("Section \"" + sec + "\": Entry \"" + entry + "\"", end=' ')
                 print("missing")
                 bump_taint()

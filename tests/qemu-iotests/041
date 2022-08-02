@@ -46,8 +46,17 @@ class TestSingleDrive(iotests.QMPTestCase):
 
     def setUp(self):
         iotests.create_image(backing_img, self.image_len)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % backing_img, '-F', 'raw', test_img)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={backing_img}',
+            '-F',
+            'raw',
+            test_img,
+        )
+
         self.vm = iotests.VM().add_drive(test_img, "node-name=top,backing.node-name=base")
         if iotests.qemu_default_machine == 'pc':
             self.vm.add_drive(None, 'media=cdrom', 'ide')
@@ -231,8 +240,17 @@ class TestSingleBlockdev(TestSingleDrive):
 
     def setUp(self):
         TestSingleDrive.setUp(self)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % backing_img, '-F', 'raw', target_img)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={backing_img}',
+            '-F',
+            'raw',
+            target_img,
+        )
+
         args = {'driver': iotests.imgfmt,
                 'node-name': self.qmp_target,
                 'file': { 'filename': target_img, 'driver': 'file' } }
@@ -317,8 +335,17 @@ class TestMirrorNoBacking(iotests.QMPTestCase):
 
     def setUp(self):
         iotests.create_image(backing_img, TestMirrorNoBacking.image_len)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % backing_img, '-F', 'raw', test_img)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={backing_img}',
+            '-F',
+            'raw',
+            test_img,
+        )
+
         self.vm = iotests.VM().add_drive(test_img)
         self.vm.launch()
 
@@ -335,8 +362,17 @@ class TestMirrorNoBacking(iotests.QMPTestCase):
     def test_complete(self):
         self.assert_no_active_block_jobs()
 
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % backing_img, '-F', 'raw', target_img)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={backing_img}',
+            '-F',
+            'raw',
+            target_img,
+        )
+
         result = self.vm.qmp('drive-mirror', device='drive0', sync='full',
                              mode='existing', target=target_img)
         self.assert_qmp(result, 'return', {})
@@ -351,8 +387,17 @@ class TestMirrorNoBacking(iotests.QMPTestCase):
     def test_cancel(self):
         self.assert_no_active_block_jobs()
 
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % backing_img, '-F', 'raw', target_img)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={backing_img}',
+            '-F',
+            'raw',
+            target_img,
+        )
+
         result = self.vm.qmp('drive-mirror', device='drive0', sync='full',
                              mode='existing', target=target_img)
         self.assert_qmp(result, 'return', {})
@@ -391,8 +436,17 @@ class TestMirrorResized(iotests.QMPTestCase):
 
     def setUp(self):
         iotests.create_image(backing_img, TestMirrorResized.backing_len)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % backing_img, '-F', 'raw', test_img)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={backing_img}',
+            '-F',
+            'raw',
+            test_img,
+        )
+
         qemu_img('resize', test_img, '2M')
         self.vm = iotests.VM().add_drive(test_img)
         self.vm.launch()
@@ -442,8 +496,8 @@ class TestReadErrors(iotests.QMPTestCase):
     MIRROR_GRANULARITY = 1024 * 1024
 
     def create_blkdebug_file(self, name, event, errno):
-        file = open(name, 'w')
-        file.write('''
+        with open(name, 'w') as file:
+            file.write('''
 [inject-error]
 state = "1"
 event = "%s"
@@ -462,16 +516,20 @@ state = "2"
 event = "%s"
 new_state = "1"
 ''' % (event, errno, self.MIRROR_GRANULARITY // 512, event, event))
-        file.close()
 
     def setUp(self):
-        self.blkdebug_file = backing_img + ".blkdebug"
+        self.blkdebug_file = f"{backing_img}.blkdebug"
         iotests.create_image(backing_img, TestReadErrors.image_len)
         self.create_blkdebug_file(self.blkdebug_file, "read_aio", 5)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=blkdebug:%s:%s,backing_fmt=raw'
-                       % (self.blkdebug_file, backing_img),
-                 test_img)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file=blkdebug:{self.blkdebug_file}:{backing_img},backing_fmt=raw',
+            test_img,
+        )
+
         # Write something for tests that use sync='top'
         qemu_io('-c', 'write %d 512' % (self.MIRROR_GRANULARITY + 65536),
                         test_img)
@@ -538,9 +596,16 @@ new_state = "1"
         # Test COW into the target image.  The first half of the
         # cluster at MIRROR_GRANULARITY has to be copied from
         # backing_img, even though sync='top'.
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-ocluster_size=131072,backing_file=%s' %(backing_img),
-                 '-F', 'raw', target_img)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            f'-ocluster_size=131072,backing_file={backing_img}',
+            '-F',
+            'raw',
+            target_img,
+        )
+
         result = self.vm.qmp('drive-mirror', device='drive0', sync='top',
                              on_source_error='ignore',
                              mode='existing', target=target_img)
@@ -607,8 +672,8 @@ class TestWriteErrors(iotests.QMPTestCase):
     MIRROR_GRANULARITY = 1024 * 1024
 
     def create_blkdebug_file(self, name, event, errno):
-        file = open(name, 'w')
-        file.write('''
+        with open(name, 'w') as file:
+            file.write('''
 [inject-error]
 state = "1"
 event = "%s"
@@ -627,16 +692,23 @@ state = "2"
 event = "%s"
 new_state = "1"
 ''' % (event, errno, self.MIRROR_GRANULARITY // 512, event, event))
-        file.close()
 
     def setUp(self):
-        self.blkdebug_file = target_img + ".blkdebug"
+        self.blkdebug_file = f"{target_img}.blkdebug"
         iotests.create_image(backing_img, TestWriteErrors.image_len)
         self.create_blkdebug_file(self.blkdebug_file, "write_aio", 5)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-obacking_file=%s' %(backing_img), '-F', 'raw', test_img)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            f'-obacking_file={backing_img}',
+            '-F',
+            'raw',
+            test_img,
+        )
+
         self.vm = iotests.VM().add_drive(test_img)
-        self.target_img = 'blkdebug:%s:%s' % (self.blkdebug_file, target_img)
+        self.target_img = f'blkdebug:{self.blkdebug_file}:{target_img}'
         qemu_img('create', '-f', iotests.imgfmt, '-osize=%d' %(TestWriteErrors.image_len), target_img)
         self.vm.launch()
 
@@ -729,8 +801,17 @@ class TestSetSpeed(iotests.QMPTestCase):
 
     def setUp(self):
         qemu_img('create', backing_img, str(TestSetSpeed.image_len))
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % backing_img, '-F', 'raw', test_img)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={backing_img}',
+            '-F',
+            'raw',
+            test_img,
+        )
+
         self.vm = iotests.VM().add_drive(test_img)
         self.vm.launch()
 
@@ -941,9 +1022,9 @@ class TestRepairQuorum(iotests.QMPTestCase):
             # Assign a node name to each quorum image in order to manipulate
             # them
             opts = "node-name=img%i" % self.IMAGES.index(i)
-            opts += ',driver=%s' % iotests.imgfmt
+            opts += f',driver={iotests.imgfmt}'
             opts += ',file.driver=file'
-            opts += ',file.filename=%s' % i
+            opts += f',file.filename={i}'
             self.vm = self.vm.add_blockdev(opts)
 
         self.vm.launch()
@@ -1146,7 +1227,7 @@ class TestRepairQuorum(iotests.QMPTestCase):
         log = re.sub(r'^\[I \d+\.\d+\] OPENED\n', '', log)
         log = re.sub(r'^Formatting.*\n', '', log)
         log = re.sub(r'\n\[I \+\d+\.\d+\] CLOSED\n?$', '', log)
-        log = re.sub(r'^%s: ' % os.path.basename(iotests.qemu_prog), '', log)
+        log = re.sub(f'^{os.path.basename(iotests.qemu_prog)}: ', '', log)
 
         self.assertEqual(log,
                          "Can no longer replace 'img1' by 'repair0', because " +
@@ -1240,7 +1321,7 @@ class TestOrphanedSource(iotests.QMPTestCase):
         nodes = [node['node-name'] for node in nodes]
 
         for expect in ('src', 'src-perm', 'dest', 'dest-perm'):
-            self.assertTrue(expect in nodes, '%s disappeared' % expect)
+            self.assertTrue(expect in nodes, f'{expect} disappeared')
         self.assertFalse('mirror-filter' in nodes,
                          'Mirror filter node did not disappear')
 

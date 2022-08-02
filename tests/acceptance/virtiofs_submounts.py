@@ -187,7 +187,7 @@ class VirtiofsSubmountsTest(LinuxTest):
             """
             self.cancel('vmlinuz parameter not set; you must point it to a '
                         'Linux kernel binary to test (to run this test with ' \
-                        'the on-image kernel, set it to an empty string)')
+                            'the on-image kernel, set it to an empty string)')
 
         self.seed = self.params.get('seed')
 
@@ -195,7 +195,7 @@ class VirtiofsSubmountsTest(LinuxTest):
 
         self.run(('ssh-keygen', '-N', '', '-t', 'ed25519', '-f', self.ssh_key))
 
-        pubkey = self.ssh_key + '.pub'
+        pubkey = f'{self.ssh_key}.pub'
 
         super(VirtiofsSubmountsTest, self).setUp(pubkey)
 

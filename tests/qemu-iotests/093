@@ -34,7 +34,7 @@ class ThrottleTestCase(iotests.QMPTestCase):
             if r['device'] == device:
                 stat = r['stats']
                 return stat['rd_bytes'], stat['rd_operations'], stat['wr_bytes'], stat['wr_operations']
-        raise Exception("Device not found for blockstats: %s" % device)
+        raise Exception(f"Device not found for blockstats: {device}")
 
     def required_drivers(self):
         return [self.test_driver]
@@ -42,8 +42,8 @@ class ThrottleTestCase(iotests.QMPTestCase):
     @iotests.skip_if_unsupported(required_drivers)
     def setUp(self):
         self.vm = iotests.VM()
-        for i in range(0, self.max_drives):
-            self.vm.add_drive(self.test_driver + "://", "file.read-zeroes=on")
+        for _ in range(self.max_drives):
+            self.vm.add_drive(f"{self.test_driver}://", "file.read-zeroes=on")
         self.vm.launch()
 
     def tearDown(self):
@@ -53,7 +53,7 @@ class ThrottleTestCase(iotests.QMPTestCase):
         params['group'] = 'test'
 
         # Set the I/O throttling parameters to all drives
-        for i in range(0, ndrives):
+        for i in range(ndrives):
             params['device'] = 'drive%d' % i
             result = self.vm.qmp("block_set_io_throttle", conv_keys=False, **params)
             self.assert_qmp(result, 'return', {})
@@ -63,7 +63,7 @@ class ThrottleTestCase(iotests.QMPTestCase):
             # IO throttling algorithm is discrete, allow 10% error so the test
             # is more robust
             return limit == 0 or \
-                   (num < seconds * limit * 1.1 / ndrives
+                       (num < seconds * limit * 1.1 / ndrives
                    and num > seconds * limit * 0.9 / ndrives)
 
         # Set vm clock to a known value
@@ -89,13 +89,13 @@ class ThrottleTestCase(iotests.QMPTestCase):
 
         # Send I/O requests to all drives
         for i in range(rd_nr):
-            for drive in range(0, ndrives):
+            for drive in range(ndrives):
                 idx = first_drive + drive
                 self.vm.hmp_qemu_io("drive%d" % idx, "aio_read %d %d" %
                                     (i * rq_size, rq_size))
 
         for i in range(wr_nr):
-            for drive in range(0, ndrives):
+            for drive in range(ndrives):
                 idx = first_drive + drive
                 self.vm.hmp_qemu_io("drive%d" % idx, "aio_write %d %d" %
                                     (i * rq_size, rq_size))
@@ -111,21 +111,21 @@ class ThrottleTestCase(iotests.QMPTestCase):
         end_wr_iops    = [0] * ndrives
 
         # Read the stats before advancing the clock
-        for i in range(0, ndrives):
+        for i in range(ndrives):
             idx = first_drive + i
             start_rd_bytes[i], start_rd_iops[i], start_wr_bytes[i], \
-                start_wr_iops[i] = self.blockstats('drive%d' % idx)
+                    start_wr_iops[i] = self.blockstats('drive%d' % idx)
 
         self.vm.qtest("clock_step %d" % ns)
 
         # Read the stats after advancing the clock
-        for i in range(0, ndrives):
+        for i in range(ndrives):
             idx = first_drive + i
             end_rd_bytes[i], end_rd_iops[i], end_wr_bytes[i], \
-                end_wr_iops[i] = self.blockstats('drive%d' % idx)
+                    end_wr_iops[i] = self.blockstats('drive%d' % idx)
 
         # Check that the I/O is within the limits and evenly distributed
-        for i in range(0, ndrives):
+        for i in range(ndrives):
             rd_bytes = end_rd_bytes[i] - start_rd_bytes[i]
             rd_iops = end_rd_iops[i] - start_rd_iops[i]
             wr_bytes = end_wr_bytes[i] - start_wr_bytes[i]
@@ -170,7 +170,7 @@ class ThrottleTestCase(iotests.QMPTestCase):
                   "iops_wr": 10,
                  }
         # Repeat the test for each one of the drives
-        for drive in range(0, self.max_drives):
+        for drive in range(self.max_drives):
             # Pick each out of all possible params and test
             for tk in params:
                 limits = dict([(k, 0) for k in params])
@@ -187,17 +187,17 @@ class ThrottleTestCase(iotests.QMPTestCase):
                   "iops_wr": 10,
                  }
         ndrives = 1
+        burst_length = 4
+
         # Pick each out of all possible params and test
         for tk in params:
             rate = params[tk] * ndrives
             burst_rate = rate * 7
-            burst_length = 4
-
             # Configure the throttling settings
             settings = dict([(k, 0) for k in params])
             settings[tk] = rate
-            settings['%s_max' % tk] = burst_rate
-            settings['%s_max_length' % tk] = burst_length
+            settings[f'{tk}_max'] = burst_rate
+            settings[f'{tk}_max_length'] = burst_length
             self.configure_throttle(ndrives, settings)
 
             # Wait for the bucket to empty so we can do bursts
@@ -276,7 +276,7 @@ class ThrottleTestGroupNames(iotests.QMPTestCase):
 
     def setUp(self):
         self.vm = iotests.VM()
-        for i in range(0, self.max_drives):
+        for _ in range(self.max_drives):
             self.vm.add_drive("null-co://",
                               "throttling.iops-total=100,file.read-zeroes=on")
         self.vm.launch()
@@ -371,7 +371,7 @@ class ThrottleTestGroupNames(iotests.QMPTestCase):
 class ThrottleTestRemovableMedia(iotests.QMPTestCase):
     def setUp(self):
         self.vm = iotests.VM()
-        self.vm.add_device("{},id=virtio-scsi".format('virtio-scsi'))
+        self.vm.add_device('virtio-scsi,id=virtio-scsi')
         self.vm.launch()
 
     def tearDown(self):

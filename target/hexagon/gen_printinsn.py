@@ -50,17 +50,14 @@ def spacify(s):
 
     slen = len(s)
     paren_count = {}
-    i = 0
     pc = 0
-    while i < slen:
+    for i in range(slen):
         c = s[i]
         if c == '(':
             pc += 1
         elif c == ')':
             pc -= 1
         paren_count[i] = pc
-        i += 1
-
     # Iterate over all operators that contain the equal sign. If any
     # match is also an assignment operator, add spaces around it if
     # the parenthesis count is 0.
@@ -76,7 +73,7 @@ def spacify(s):
         if paren_count[ms] == 0:
             # Check if the entire string t is an assignment.
             am = assign.match(t)
-            if am and len(am.group(0)) == me-ms:
+            if am and len(am[0]) == me - ms:
                 # Don't add spaces if they are already there.
                 if ms > 0 and s[ms-1] != ' ':
                     out.append(' ')
@@ -89,7 +86,7 @@ def spacify(s):
         out += t
 
     # Append the remaining part of the string.
-    out += s[pos:len(s)]
+    out += s[pos:]
     return ''.join(out)
 
 def main():
@@ -103,9 +100,8 @@ def main():
             if not hex_common.behdict[tag]: continue
             extendable_upper_imm = False
             extendable_lower_imm = False
-            m = immext_casere.search(hex_common.semdict[tag])
-            if m:
-                if m.group(1).isupper():
+            if m := immext_casere.search(hex_common.semdict[tag]):
+                if m[1].isupper():
                     extendable_upper_imm = True
                 else:
                     extendable_lower_imm = True
@@ -124,13 +120,10 @@ def main():
                 hex_common.reg_or_immre.findall(hex_common.behdict[tag])
             ri = 0
             seenregs = {}
-            for allregs,a,b,c,d,allimm,immlett,bits,immshift in regs_or_imms:
+            for allregs, a, b, c, d, allimm, immlett, bits, immshift in regs_or_imms:
                 if a:
                     #register
-                    if b in seenregs:
-                        regno = seenregs[b]
-                    else:
-                        regno = ri
+                    regno = seenregs.get(b, ri)
                     if len(b) == 1:
                         f.write(', insn->regno[%d]' % regno)
                         if 'S' in a:

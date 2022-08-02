@@ -67,12 +67,9 @@ def kvm_available(target_arch: Optional[str] = None,
         return False
     if target_arch:
         host_arch = os.uname()[4]
-        if target_arch != host_arch:
-            if target_arch != ADDITIONAL_ARCHES.get(host_arch):
-                return False
-    if qemu_bin and "kvm" not in list_accel(qemu_bin):
-        return False
-    return True
+        if target_arch not in [host_arch, ADDITIONAL_ARCHES.get(host_arch)]:
+            return False
+    return not qemu_bin or "kvm" in list_accel(qemu_bin)
 
 
 def tcg_available(qemu_bin: str) -> bool:

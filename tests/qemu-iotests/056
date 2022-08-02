@@ -31,10 +31,10 @@ test_img = os.path.join(iotests.test_dir, 'test.img')
 target_img = os.path.join(iotests.test_dir, 'target.img')
 
 def img_create(img, fmt=iotests.imgfmt, size='64M', **kwargs):
-    fullname = os.path.join(iotests.test_dir, '%s.%s' % (img, fmt))
+    fullname = os.path.join(iotests.test_dir, f'{img}.{fmt}')
     optargs = []
     for k,v in kwargs.items():
-        optargs = optargs + ['-o', '%s=%s' % (k,v)]
+        optargs = optargs + ['-o', f'{k}={v}']
     args = ['create', '-f', fmt] + optargs + [fullname, size]
     iotests.qemu_img(*args)
     return fullname
@@ -55,8 +55,17 @@ class TestSyncModesNoneAndTop(iotests.QMPTestCase):
 
     def setUp(self):
         create_image(backing_img, TestSyncModesNoneAndTop.image_len)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % backing_img, '-F', 'raw', test_img)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={backing_img}',
+            '-F',
+            'raw',
+            test_img,
+        )
+
         qemu_io('-c', 'write -P0x41 0 512', test_img)
         qemu_io('-c', 'write -P0xd5 1M 32k', test_img)
         qemu_io('-c', 'write -P0xdc 32M 124k', test_img)
@@ -154,9 +163,11 @@ class BackupTest(iotests.QMPTestCase):
 
     def qmp_backup_and_wait(self, cmd='drive-backup', serror=None,
                             aerror=None, **kwargs):
-        if not self.qmp_backup(cmd, serror, **kwargs):
-            return False
-        return self.qmp_backup_wait(kwargs['device'], aerror)
+        return (
+            self.qmp_backup_wait(kwargs['device'], aerror)
+            if self.qmp_backup(cmd, serror, **kwargs)
+            else False
+        )
 
     def qmp_backup(self, cmd='drive-backup',
                    error=None, **kwargs):

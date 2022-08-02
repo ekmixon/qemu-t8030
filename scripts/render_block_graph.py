@@ -32,8 +32,10 @@ from qemu.qmp import (
 
 
 def perm(arr):
-    s = 'w' if 'write' in arr else '_'
-    s += 'r' if 'consistent-read' in arr else '_'
+    s = ('w' if 'write' in arr else '_') + (
+        'r' if 'consistent-read' in arr else '_'
+    )
+
     s += 'u' if 'write-unchanged' in arr else '_'
     s += 'g' if 'graph-mod' in arr else '_'
     s += 's' if 'resize' in arr else '_'
@@ -80,7 +82,7 @@ def render_block_graph(qmp, filename, format='png'):
             shape = 'box'
         else:
             assert n['type'] == 'block-backend'
-            label = n['name'] if n['name'] else 'unnamed blk'
+            label = n['name'] or 'unnamed blk'
             shape = 'box'
 
         graph.node(str(n['id']), label, shape=shape)

@@ -38,7 +38,7 @@ from .source import QAPISourceInfo
 
 
 def gen_visit_decl(name: str, scalar: bool = False) -> str:
-    c_type = c_name(name) + ' *'
+    c_type = f'{c_name(name)} *'
     if not scalar:
         c_type += '*'
     return mcgen('''

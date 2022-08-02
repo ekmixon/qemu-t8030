@@ -35,9 +35,13 @@ class S390CCWVirtioMachine(Test):
 
     dmesg_clear_count = 1
     def clear_guest_dmesg(self):
-        exec_command_and_wait_for_pattern(self, 'dmesg -c > /dev/null; '
-                    'echo dm_clear\ ' + str(self.dmesg_clear_count),
-                    'dm_clear ' + str(self.dmesg_clear_count))
+        exec_command_and_wait_for_pattern(
+            self,
+            'dmesg -c > /dev/null; '
+            'echo dm_clear\ ' + str(self.dmesg_clear_count),
+            f'dm_clear {str(self.dmesg_clear_count)}',
+        )
+
         self.dmesg_clear_count += 1
 
     def test_s390x_devices(self):
@@ -92,9 +96,9 @@ class S390CCWVirtioMachine(Test):
         # check that the device at 0.2.0000 is in legacy mode, while the
         # device at 0.3.1234 has the virtio-1 feature bit set
         virtio_rng_features="00000000000000000000000000001100" + \
-                            "10000000000000000000000000000000"
+                                "10000000000000000000000000000000"
         virtio_rng_features_legacy="00000000000000000000000000001100" + \
-                                   "00000000000000000000000000000000"
+                                       "00000000000000000000000000000000"
         exec_command_and_wait_for_pattern(self,
                         'cat /sys/bus/ccw/devices/0.2.0000/virtio?/features',
                         virtio_rng_features_legacy)

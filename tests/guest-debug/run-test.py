@@ -54,29 +54,22 @@ if __name__ == '__main__':
     if not args.gdb:
         print("We need gdb to run the test")
         exit(-1)
-    if args.output:
-        output = open(args.output, "w")
-    else:
-        output = None
-
+    output = open(args.output, "w") if args.output else None
     socket_dir = TemporaryDirectory("qemu-gdbstub")
     socket_name = os.path.join(socket_dir.name, "gdbstub.socket")
 
     # Launch QEMU with binary
     if "system" in args.qemu:
-        cmd = "%s %s %s -gdb unix:path=%s,server=on" % (args.qemu,
-                                                        args.qargs,
-                                                        args.binary,
-                                                        socket_name)
-    else:
-        cmd = "%s %s -g %s %s" % (args.qemu, args.qargs, socket_name,
-                                  args.binary)
+        cmd = f"{args.qemu} {args.qargs} {args.binary} -gdb unix:path={socket_name},server=on"
 
-    log(output, "QEMU CMD: %s" % (cmd))
+    else:
+        cmd = f"{args.qemu} {args.qargs} -g {socket_name} {args.binary}"
+
+    log(output, f"QEMU CMD: {cmd}")
     inferior = subprocess.Popen(shlex.split(cmd))
 
     # Now launch gdb with our test and collect the result
-    gdb_cmd = "%s %s" % (args.gdb, args.binary)
+    gdb_cmd = f"{args.gdb} {args.binary}"
     # run quietly and ignore .gdbinit
     gdb_cmd += " -q -n -batch"
     # disable prompts in case of crash
@@ -84,11 +77,11 @@ if __name__ == '__main__':
     # connect to remote
     gdb_cmd += " -ex 'target remote %s'" % (socket_name)
     # finally the test script itself
-    gdb_cmd += " -x %s" % (args.test)
+    gdb_cmd += f" -x {args.test}"
 
 
     sleep(1)
-    log(output, "GDB CMD: %s" % (gdb_cmd))
+    log(output, f"GDB CMD: {gdb_cmd}")
 
     result = subprocess.call(gdb_cmd, shell=True, stdout=output)
 

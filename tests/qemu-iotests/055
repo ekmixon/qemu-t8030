@@ -50,7 +50,7 @@ class TestSingleDrive(iotests.QMPTestCase):
         qemu_img('create', '-f', iotests.imgfmt, blockdev_target_img, str(image_len))
 
         self.vm = iotests.VM()
-        self.vm.add_drive('blkdebug::' + test_img, 'node-name=source')
+        self.vm.add_drive(f'blkdebug::{test_img}', 'node-name=source')
         self.vm.add_drive(blockdev_target_img, 'node-name=target',
                           interface="none")
         if iotests.qemu_default_machine == 'pc':
@@ -203,7 +203,7 @@ class TestSetSpeed(iotests.QMPTestCase):
     def setUp(self):
         qemu_img('create', '-f', iotests.imgfmt, blockdev_target_img, str(image_len))
 
-        self.vm = iotests.VM().add_drive('blkdebug::' + test_img)
+        self.vm = iotests.VM().add_drive(f'blkdebug::{test_img}')
         self.vm.add_drive(blockdev_target_img, interface="none")
         self.vm.launch()
 
@@ -501,8 +501,10 @@ class TestCompressedToQcow2(iotests.QMPTestCase):
             pass
 
     def do_prepare_drives(self, attach_target):
-        self.vm = iotests.VM().add_drive('blkdebug::' + test_img,
-                                         opts=self.target_fmt['drive-opts'])
+        self.vm = iotests.VM().add_drive(
+            f'blkdebug::{test_img}', opts=self.target_fmt['drive-opts']
+        )
+
 
         qemu_img('create', '-f', self.target_fmt['type'], blockdev_target_img,
                  str(self.image_len), *self.target_fmt['args'])

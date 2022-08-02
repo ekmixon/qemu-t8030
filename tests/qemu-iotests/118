@@ -288,17 +288,23 @@ class TestInitiallyFilled(GeneralChangeTestsBaseClass):
         qemu_img('create', '-f', iotests.imgfmt, new_img, '1440k')
         self.vm = iotests.VM()
         if self.use_drive:
-            self.vm.add_drive(old_img, 'media=%s' % self.media, 'none')
+            self.vm.add_drive(old_img, f'media={self.media}', 'none')
         else:
-            self.vm.add_blockdev([ 'node-name=drive0',
-                                   'driver=%s' % iotests.imgfmt,
-                                   'file.driver=file',
-                                   'file.filename=%s' % old_img ])
+            self.vm.add_blockdev(
+                [
+                    'node-name=drive0',
+                    f'driver={iotests.imgfmt}',
+                    'file.driver=file',
+                    f'file.filename={old_img}',
+                ]
+            )
+
         if self.interface == 'scsi':
             self.vm.add_device('virtio-scsi-pci')
-        self.vm.add_device('%s,drive=drive0,id=%s' %
-                           (interface_to_device_name(self.interface),
-                            self.device_name))
+        self.vm.add_device(
+            f'{interface_to_device_name(self.interface)},drive=drive0,id={self.device_name}'
+        )
+
         self.vm.launch()
 
     def tearDown(self):
@@ -330,13 +336,13 @@ class TestInitiallyEmpty(GeneralChangeTestsBaseClass):
         qemu_img('create', '-f', iotests.imgfmt, new_img, '1440k')
         self.vm = iotests.VM()
         if self.use_drive:
-            self.vm.add_drive(None, 'media=%s' % self.media, 'none')
+            self.vm.add_drive(None, f'media={self.media}', 'none')
         if self.interface == 'scsi':
             self.vm.add_device('virtio-scsi-pci')
-        self.vm.add_device('%s,%sid=%s' %
-                           (interface_to_device_name(self.interface),
-                            'drive=drive0,' if self.use_drive else '',
-                            self.device_name))
+        self.vm.add_device(
+            f"{interface_to_device_name(self.interface)},{'drive=drive0,' if self.use_drive else ''}id={self.device_name}"
+        )
+
         self.vm.launch()
 
     def tearDown(self):
@@ -367,8 +373,8 @@ def create_basic_test_classes():
                          'has_real_tray': has_real_tray,
                          'use_drive': use_drive }
 
-                name = '%s_%s_%s_%s' % (case.__name__, media, interface,
-                                        'drive' if use_drive else 'blockdev')
+                name = f"{case.__name__}_{media}_{interface}_{'drive' if use_drive else 'blockdev'}"
+
                 globals()[name] = type(name, (case, ), attr)
 
 create_basic_test_classes()
@@ -392,7 +398,7 @@ class TestChangeReadOnly(ChangeBaseClass):
         os.chmod(old_img, 0o444)
         os.chmod(new_img, 0o444)
         self.vm.add_drive(old_img, 'media=disk,read-only=on', 'none')
-        self.vm.add_device('floppy,drive=drive0,id=%s' % self.device_name)
+        self.vm.add_device(f'floppy,drive=drive0,id={self.device_name}')
         self.vm.launch()
 
         result = self.vm.qmp('query-block')
@@ -412,7 +418,7 @@ class TestChangeReadOnly(ChangeBaseClass):
     def test_ro_rw_retain(self):
         os.chmod(old_img, 0o444)
         self.vm.add_drive(old_img, 'media=disk,read-only=on', 'none')
-        self.vm.add_device('floppy,drive=drive0,id=%s' % self.device_name)
+        self.vm.add_device(f'floppy,drive=drive0,id={self.device_name}')
         self.vm.launch()
 
         result = self.vm.qmp('query-block')
@@ -433,7 +439,7 @@ class TestChangeReadOnly(ChangeBaseClass):
     def test_rw_ro_retain(self):
         os.chmod(new_img, 0o444)
         self.vm.add_drive(old_img, 'media=disk', 'none')
-        self.vm.add_device('floppy,drive=drive0,id=%s' % self.device_name)
+        self.vm.add_device(f'floppy,drive=drive0,id={self.device_name}')
         self.vm.launch()
 
         result = self.vm.qmp('query-block')
@@ -455,7 +461,7 @@ class TestChangeReadOnly(ChangeBaseClass):
     def test_ro_rw(self):
         os.chmod(old_img, 0o444)
         self.vm.add_drive(old_img, 'media=disk,read-only=on', 'none')
-        self.vm.add_device('floppy,drive=drive0,id=%s' % self.device_name)
+        self.vm.add_device(f'floppy,drive=drive0,id={self.device_name}')
         self.vm.launch()
 
         result = self.vm.qmp('query-block')
@@ -476,7 +482,7 @@ class TestChangeReadOnly(ChangeBaseClass):
     def test_rw_ro(self):
         os.chmod(new_img, 0o444)
         self.vm.add_drive(old_img, 'media=disk', 'none')
-        self.vm.add_device('floppy,drive=drive0,id=%s' % self.device_name)
+        self.vm.add_device(f'floppy,drive=drive0,id={self.device_name}')
         self.vm.launch()
 
         result = self.vm.qmp('query-block')
@@ -496,7 +502,7 @@ class TestChangeReadOnly(ChangeBaseClass):
 
     def test_make_rw_ro(self):
         self.vm.add_drive(old_img, 'media=disk', 'none')
-        self.vm.add_device('floppy,drive=drive0,id=%s' % self.device_name)
+        self.vm.add_device(f'floppy,drive=drive0,id={self.device_name}')
         self.vm.launch()
 
         result = self.vm.qmp('query-block')
@@ -518,7 +524,7 @@ class TestChangeReadOnly(ChangeBaseClass):
     def test_make_ro_rw(self):
         os.chmod(new_img, 0o444)
         self.vm.add_drive(old_img, 'media=disk', 'none')
-        self.vm.add_device('floppy,drive=drive0,id=%s' % self.device_name)
+        self.vm.add_device(f'floppy,drive=drive0,id={self.device_name}')
         self.vm.launch()
 
         result = self.vm.qmp('query-block')
@@ -539,7 +545,7 @@ class TestChangeReadOnly(ChangeBaseClass):
     def test_make_rw_ro_by_retain(self):
         os.chmod(old_img, 0o444)
         self.vm.add_drive(old_img, 'media=disk,read-only=on', 'none')
-        self.vm.add_device('floppy,drive=drive0,id=%s' % self.device_name)
+        self.vm.add_device(f'floppy,drive=drive0,id={self.device_name}')
         self.vm.launch()
 
         result = self.vm.qmp('query-block')
@@ -560,7 +566,7 @@ class TestChangeReadOnly(ChangeBaseClass):
     def test_make_ro_rw_by_retain(self):
         os.chmod(new_img, 0o444)
         self.vm.add_drive(old_img, 'media=disk', 'none')
-        self.vm.add_device('floppy,drive=drive0,id=%s' % self.device_name)
+        self.vm.add_device(f'floppy,drive=drive0,id={self.device_name}')
         self.vm.launch()
 
         result = self.vm.qmp('query-block')
@@ -580,7 +586,7 @@ class TestChangeReadOnly(ChangeBaseClass):
     def test_rw_ro_cycle(self):
         os.chmod(new_img, 0o444)
         self.vm.add_drive(old_img, 'media=disk', 'none')
-        self.vm.add_device('floppy,drive=drive0,id=%s' % self.device_name)
+        self.vm.add_device(f'floppy,drive=drive0,id={self.device_name}')
         self.vm.launch()
 
         result = self.vm.qmp('query-block')
@@ -630,7 +636,7 @@ class TestBlockJobsAfterCycle(ChangeBaseClass):
 
         self.vm = iotests.VM()
         self.vm.add_drive_raw("id=drive0,driver=null-co,if=none")
-        self.vm.add_device('floppy,drive=drive0,id=%s' % self.device_name)
+        self.vm.add_device(f'floppy,drive=drive0,id={self.device_name}')
         self.vm.launch()
 
         result = self.vm.qmp('query-block')
@@ -698,8 +704,10 @@ class TestBlockJobsAfterCycle(ChangeBaseClass):
 if __name__ == '__main__':
     if iotests.qemu_default_machine != 'pc':
         # We need floppy and IDE CD-ROM
-        iotests.notrun('not suitable for this machine type: %s' %
-                       iotests.qemu_default_machine)
+        iotests.notrun(
+            f'not suitable for this machine type: {iotests.qemu_default_machine}'
+        )
+
     # Need to support image creation
     iotests.main(supported_fmts=['vpc', 'parallels', 'qcow', 'vdi', 'qcow2',
                                  'vmdk', 'raw', 'vhdx', 'qed'],

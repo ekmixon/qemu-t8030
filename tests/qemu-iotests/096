@@ -31,11 +31,13 @@ class TestLiveSnapshot(iotests.QMPTestCase):
     iops_size = 1024
 
     def setUp(self):
-        opts = []
-        opts.append('node-name=base')
-        opts.append('throttling.group=%s' % self.group)
-        opts.append('throttling.iops-total=%d' % self.iops)
-        opts.append('throttling.iops-size=%d' % self.iops_size)
+        opts = [
+            'node-name=base',
+            f'throttling.group={self.group}',
+            'throttling.iops-total=%d' % self.iops,
+            'throttling.iops-size=%d' % self.iops_size,
+        ]
+
         iotests.qemu_img('create', '-f', iotests.imgfmt, self.base_img, '100M')
         self.vm = iotests.VM().add_drive(self.base_img, ','.join(opts))
         self.vm.launch()

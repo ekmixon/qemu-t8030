@@ -38,15 +38,15 @@ def gen_helper_return_type_pair(f,regtype,regid,regno):
 
 def gen_helper_arg(f,regtype,regid,regno):
     if regno > 0 : f.write(", " )
-    f.write("int32_t %s%sV" % (regtype,regid))
+    f.write(f"int32_t {regtype}{regid}V")
 
 def gen_helper_arg_new(f,regtype,regid,regno):
     if regno >= 0 : f.write(", " )
-    f.write("int32_t %s%sN" % (regtype,regid))
+    f.write(f"int32_t {regtype}{regid}N")
 
 def gen_helper_arg_pair(f,regtype,regid,regno):
     if regno >= 0 : f.write(", ")
-    f.write("int64_t %s%sV" % (regtype,regid))
+    f.write(f"int64_t {regtype}{regid}V")
 
 def gen_helper_arg_opn(f,regtype,regid,i,tag):
     if (hex_common.is_pair(regid)):
@@ -62,7 +62,7 @@ def gen_helper_arg_opn(f,regtype,regid,i,tag):
         print("Bad register parse: ",regtype,regid,toss,numregs)
 
 def gen_helper_arg_imm(f,immlett):
-    f.write(", int32_t %s" % (hex_common.imm_name(immlett)))
+    f.write(f", int32_t {hex_common.imm_name(immlett)}")
 
 def gen_helper_dest_decl(f,regtype,regid,regno,subfield=""):
     f.write("    int32_t %s%sV%s = 0;\n" % \
@@ -119,9 +119,10 @@ def gen_helper_function(f, tag, tagregs, tagimms):
             numresults += 1
             if (hex_common.is_scalar_reg(regtype)):
                 numscalarresults += 1
-        if (hex_common.is_readwrite(regid)):
-            if (hex_common.is_scalar_reg(regtype)):
-                numscalarreadwrite += 1
+        if (hex_common.is_readwrite(regid)) and (
+            hex_common.is_scalar_reg(regtype)
+        ):
+            numscalarreadwrite += 1
 
     if (numscalarresults > 1):
         ## The helper is bogus when there is more than one result
@@ -143,7 +144,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
 
         if (numscalarresults == 0):
             f.write("void")
-        f.write(" HELPER(%s)(CPUHexagonState *env" % tag)
+        f.write(f" HELPER({tag})(CPUHexagonState *env")
 
         i = 1
 

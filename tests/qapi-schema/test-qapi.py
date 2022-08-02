@@ -25,17 +25,17 @@ from qapi.schema import QAPISchema, QAPISchemaVisitor
 class QAPISchemaTestVisitor(QAPISchemaVisitor):
 
     def visit_module(self, name):
-        print('module %s' % name)
+        print(f'module {name}')
 
     def visit_include(self, name, info):
-        print('include %s' % name)
+        print(f'include {name}')
 
     def visit_enum_type(self, name, info, ifcond, features, members, prefix):
-        print('enum %s' % name)
+        print(f'enum {name}')
         if prefix:
-            print('    prefix %s' % prefix)
+            print(f'    prefix {prefix}')
         for m in members:
-            print('    member %s' % m.name)
+            print(f'    member {m.name}')
             self._print_if(m.ifcond, indent=8)
         self._print_if(ifcond)
         self._print_features(features)
@@ -43,17 +43,16 @@ class QAPISchemaTestVisitor(QAPISchemaVisitor):
     def visit_array_type(self, name, info, ifcond, element_type):
         if not info:
             return              # suppress built-in arrays
-        print('array %s %s' % (name, element_type.name))
+        print(f'array {name} {element_type.name}')
         self._print_if(ifcond)
 
     def visit_object_type(self, name, info, ifcond, features,
                           base, members, variants):
-        print('object %s' % name)
+        print(f'object {name}')
         if base:
-            print('    base %s' % base.name)
+            print(f'    base {base.name}')
         for m in members:
-            print('    member %s: %s optional=%s'
-                  % (m.name, m.type.name, m.optional))
+            print(f'    member {m.name}: {m.type.name} optional={m.optional}')
             self._print_if(m.ifcond, 8)
             self._print_features(m.features, indent=8)
         self._print_variants(variants)
@@ -61,7 +60,7 @@ class QAPISchemaTestVisitor(QAPISchemaVisitor):
         self._print_features(features)
 
     def visit_alternate_type(self, name, info, ifcond, features, variants):
-        print('alternate %s' % name)
+        print(f'alternate {name}')
         self._print_variants(variants)
         self._print_if(ifcond)
         self._print_features(features)
@@ -69,39 +68,41 @@ class QAPISchemaTestVisitor(QAPISchemaVisitor):
     def visit_command(self, name, info, ifcond, features,
                       arg_type, ret_type, gen, success_response, boxed,
                       allow_oob, allow_preconfig, coroutine):
-        print('command %s %s -> %s'
-              % (name, arg_type and arg_type.name,
-                 ret_type and ret_type.name))
-        print('    gen=%s success_response=%s boxed=%s oob=%s preconfig=%s%s'
-              % (gen, success_response, boxed, allow_oob, allow_preconfig,
-                 " coroutine=True" if coroutine else ""))
+        print(
+            f'command {name} {arg_type and arg_type.name} -> {ret_type and ret_type.name}'
+        )
+
+        print(
+            f'    gen={gen} success_response={success_response} boxed={boxed} oob={allow_oob} preconfig={allow_preconfig}{" coroutine=True" if coroutine else ""}'
+        )
+
         self._print_if(ifcond)
         self._print_features(features)
 
     def visit_event(self, name, info, ifcond, features, arg_type, boxed):
-        print('event %s %s' % (name, arg_type and arg_type.name))
-        print('    boxed=%s' % boxed)
+        print(f'event {name} {arg_type and arg_type.name}')
+        print(f'    boxed={boxed}')
         self._print_if(ifcond)
         self._print_features(features)
 
     @staticmethod
     def _print_variants(variants):
         if variants:
-            print('    tag %s' % variants.tag_member.name)
+            print(f'    tag {variants.tag_member.name}')
             for v in variants.variants:
-                print('    case %s: %s' % (v.name, v.type.name))
+                print(f'    case {v.name}: {v.type.name}')
                 QAPISchemaTestVisitor._print_if(v.ifcond, indent=8)
 
     @staticmethod
     def _print_if(ifcond, indent=4):
         if ifcond:
-            print('%sif %s' % (' ' * indent, ifcond))
+            print(f"{' ' * indent}if {ifcond}")
 
     @classmethod
     def _print_features(cls, features, indent=4):
         if features:
             for f in features:
-                print('%sfeature %s' % (' ' * indent, f.name))
+                print(f"{' ' * indent}feature {f.name}")
                 cls._print_if(f.ifcond, indent + 4)
 
 
@@ -111,7 +112,7 @@ def test_frontend(fname):
 
     for doc in schema.docs:
         if doc.symbol:
-            print('doc symbol=%s' % doc.symbol)
+            print(f'doc symbol={doc.symbol}')
         else:
             print('doc freeform')
         print('    body=\n%s' % doc.body.text)
@@ -126,11 +127,11 @@ def test_frontend(fname):
 def test_and_diff(test_name, dir_name, update):
     sys.stdout = StringIO()
     try:
-        test_frontend(os.path.join(dir_name, test_name + '.json'))
+        test_frontend(os.path.join(dir_name, f'{test_name}.json'))
     except QAPIError as err:
         errstr = str(err) + '\n'
         if dir_name:
-            errstr = errstr.replace(dir_name + '/', '')
+            errstr = errstr.replace(f'{dir_name}/', '')
         actual_err = errstr.splitlines(True)
     else:
         actual_err = []
@@ -141,8 +142,8 @@ def test_and_diff(test_name, dir_name, update):
 
     mode = 'r+' if update else 'r'
     try:
-        outfp = open(os.path.join(dir_name, test_name + '.out'), mode)
-        errfp = open(os.path.join(dir_name, test_name + '.err'), mode)
+        outfp = open(os.path.join(dir_name, f'{test_name}.out'), mode)
+        errfp = open(os.path.join(dir_name, f'{test_name}.err'), mode)
         expected_out = outfp.readlines()
         expected_err = errfp.readlines()
     except IOError as err:
@@ -154,8 +155,7 @@ def test_and_diff(test_name, dir_name, update):
     if actual_out == expected_out and actual_err == expected_err:
         return 0
 
-    print("%s %s" % (test_name, 'UPDATE' if update else 'FAIL'),
-          file=sys.stderr)
+    print(f"{test_name} {'UPDATE' if update else 'FAIL'}", file=sys.stderr)
     out_diff = difflib.unified_diff(expected_out, actual_out, outfp.name)
     err_diff = difflib.unified_diff(expected_err, actual_err, errfp.name)
     sys.stdout.writelines(out_diff)

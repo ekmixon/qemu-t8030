@@ -111,10 +111,7 @@ class Engine(object):
         src_pid = src.get_pid()
 
         vcpus = src.command("query-cpus-fast")
-        src_threads = []
-        for vcpu in vcpus:
-            src_threads.append(vcpu["thread-id"])
-
+        src_threads = [vcpu["thread-id"] for vcpu in vcpus]
         # XXX how to get dst timings on remote host ?
 
         if self._verbose:
@@ -222,9 +219,11 @@ class Engine(object):
                 src_qemu_time.append(self._cpu_timing(src_pid))
                 src_vcpu_time.extend(self._vcpu_timing(src_pid, src_threads))
 
-            if (len(progress_history) == 0 or
-                (progress_history[-1]._ram._iterations <
-                 progress._ram._iterations)):
+            if (
+                not progress_history
+                or progress_history[-1]._ram._iterations
+                < progress._ram._iterations
+            ):
                 progress_history.append(progress)
 
             if progress._status in ("completed", "failed", "cancelled"):
@@ -297,7 +296,7 @@ class Engine(object):
         else:
             args.append("quiet")
 
-        args.append("ramsize=%s" % hardware._mem)
+        args.append(f"ramsize={hardware._mem}")
 
         cmdline = " ".join(args)
         if tunnelled:
@@ -323,18 +322,13 @@ class Engine(object):
                             "-mem-prealloc"]
         if hardware._locked_pages:
             argv_source += ["-overcommit", "mem-lock=on"]
-        if hardware._huge_pages:
-            pass
-
         return argv
 
     def _get_src_args(self, hardware):
         return self._get_common_args(hardware)
 
     def _get_dst_args(self, hardware, uri):
-        tunnelled = False
-        if self._dst_host != "localhost":
-            tunnelled = True
+        tunnelled = self._dst_host != "localhost"
         argv = self._get_common_args(hardware, tunnelled)
         return argv + ["-incoming", uri]
 
@@ -344,9 +338,9 @@ class Engine(object):
         if len(cpu_bind) > 0 or len(mem_bind) > 0:
             wrapper.append("numactl")
             if cpu_bind:
-                wrapper.append("--physcpubind=%s" % ",".join(cpu_bind))
+                wrapper.append(f'--physcpubind={",".join(cpu_bind)}')
             if mem_bind:
-                wrapper.append("--membind=%s" % ",".join(mem_bind))
+                wrapper.append(f'--membind={",".join(mem_bind)}')
 
         return wrapper
 
@@ -373,20 +367,22 @@ class Engine(object):
         matcher = re.compile(regex)
         records = []
         for line in log.split("\n"):
-            match = matcher.match(line)
-            if match:
-                records.append(TimingRecord(int(match.group(1)),
-                                            int(match.group(2)) / 1000.0,
-                                            int(match.group(3))))
+            if match := matcher.match(line):
+                records.append(
+                    TimingRecord(
+                        int(match[1]), int(match[2]) / 1000.0, int(match[3])
+                    )
+                )
+
         return records
 
     def run(self, hardware, scenario, result_dir=os.getcwd()):
         abs_result_dir = os.path.join(result_dir, scenario._name)
 
         if self._transport == "tcp":
-            uri = "tcp:%s:9000" % self._dst_host
+            uri = f"tcp:{self._dst_host}:9000"
         elif self._transport == "rdma":
-            uri = "rdma:%s:9000" % self._dst_host
+            uri = f"rdma:{self._dst_host}:9000"
         elif self._transport == "unix":
             if self._dst_host != "localhost":
                 raise Exception("Running use unix migration transport for non-local host")
@@ -423,7 +419,7 @@ class Engine(object):
             progress_history = ret[0]
             qemu_timings = ret[1]
             vcpu_timings = ret[2]
-            if uri[0:5] == "unix:" and os.path.exists(uri[5:]):
+            if uri[:5] == "unix:" and os.path.exists(uri[5:]):
                 os.remove(uri[5:])
 
             if os.path.exists(srcmonaddr):
@@ -446,7 +442,7 @@ class Engine(object):
                           self._initrd, self._transport, self._sleep)
         except Exception as e:
             if self._debug:
-                print("Failed: %s" % str(e))
+                print(f"Failed: {str(e)}")
             try:
                 src.shutdown()
             except:

@@ -13,8 +13,8 @@ import sys
 
 class Suite(object):
     def __init__(self):
-        self.tests = list()
-        self.slow_tests = list()
+        self.tests = []
+        self.slow_tests = []
         self.executables = set()
 
 print('''
@@ -39,8 +39,10 @@ i = 0
 
 def process_tests(test, targets, suites):
     global i
-    env = ' '.join(('%s=%s' % (shlex.quote(k), shlex.quote(v))
-                    for k, v in test['env'].items()))
+    env = ' '.join(
+        f'{shlex.quote(k)}={shlex.quote(v)}' for k, v in test['env'].items()
+    )
+
     executable = test['cmd'][0]
     try:
         executable = os.path.relpath(executable)
@@ -89,9 +91,9 @@ def process_tests(test, targets, suites):
         suites[s].executables.add(executable)
 
 def emit_prolog(suites, prefix):
-    all_tap = ' '.join(('%s-report-%s.tap' % (prefix, k) for k in suites.keys()))
-    print('.PHONY: %s %s-report.tap %s' % (prefix, prefix, all_tap))
-    print('%s: run-tests' % (prefix,))
+    all_tap = ' '.join(f'{prefix}-report-{k}.tap' for k in suites.keys())
+    print(f'.PHONY: {prefix} {prefix}-report.tap {all_tap}')
+    print(f'{prefix}: run-tests')
     print('%s-report.tap %s: %s-report%%.tap: all' % (prefix, all_tap, prefix))
     print('''\t$(MAKE) .test.output-format=tap --quiet -Otarget V=1 %s$* | ./scripts/tap-merge.pl | tee "$@" \\
               | ./scripts/tap-driver.pl $(if $(V),, --show-failures-only)''' % (prefix, ))
@@ -100,17 +102,17 @@ def emit_suite(name, suite, prefix):
     executables = ' '.join(suite.executables)
     slow_test_numbers = ' '.join((str(x) for x in suite.slow_tests))
     test_numbers = ' '.join((str(x) for x in suite.tests))
-    target = '%s-%s' % (prefix, name)
-    print('.test.quick.%s := %s' % (target, test_numbers))
-    print('.test.slow.%s := $(.test.quick.%s) %s' % (target, target, slow_test_numbers))
-    print('%s-build: %s' % (prefix, executables))
-    print('.PHONY: %s' % (target, ))
-    print('.PHONY: %s-report-%s.tap' % (prefix, name))
-    print('%s: run-tests' % (target, ))
-    print('ifneq ($(filter %s %s, $(MAKECMDGOALS)),)' % (target, prefix))
-    print('.tests += $(.test.$(SPEED).%s)' % (target, ))
+    target = f'{prefix}-{name}'
+    print(f'.test.quick.{target} := {test_numbers}')
+    print(f'.test.slow.{target} := $(.test.quick.{target}) {slow_test_numbers}')
+    print(f'{prefix}-build: {executables}')
+    print(f'.PHONY: {target}')
+    print(f'.PHONY: {prefix}-report-{name}.tap')
+    print(f'{target}: run-tests')
+    print(f'ifneq ($(filter {target} {prefix}, $(MAKECMDGOALS)),)')
+    print(f'.tests += $(.test.$(SPEED).{target})')
     print('endif')
-    print('all-%s-targets += %s' % (prefix, target))
+    print(f'all-{prefix}-targets += {target}')
 
 targets = {t['id']: [os.path.relpath(f) for f in t['filename']]
            for t in introspect['targets']}

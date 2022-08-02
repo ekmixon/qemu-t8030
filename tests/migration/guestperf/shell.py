@@ -45,7 +45,12 @@ class BaseShell(object):
         parser.add_argument("--sleep", dest="sleep", default=15, type=int)
         parser.add_argument("--binary", dest="binary", default="/usr/bin/qemu-system-x86_64")
         parser.add_argument("--dst-host", dest="dst_host", default="localhost")
-        parser.add_argument("--kernel", dest="kernel", default="/boot/vmlinuz-%s" % platform.release())
+        parser.add_argument(
+            "--kernel",
+            dest="kernel",
+            default=f"/boot/vmlinuz-{platform.release()}",
+        )
+
         parser.add_argument("--initrd", dest="initrd", default="tests/migration/initrd-stress.img")
         parser.add_argument("--transport", dest="transport", default="unix")
 
@@ -75,9 +80,7 @@ class BaseShell(object):
 
     def get_hardware(self, args):
         def split_map(value):
-            if value == "":
-                return []
-            return value.split(",")
+            return [] if value == "" else value.split(",")
 
         return Hardware(cpus=args.cpus,
                         mem=args.mem,
@@ -172,7 +175,7 @@ class Shell(BaseShell):
                     print(report.to_json(), file=fh)
             return 0
         except Exception as e:
-            print("Error: %s" % str(e), file=sys.stderr)
+            print(f"Error: {str(e)}", file=sys.stderr)
             if args.debug:
                 raise
             return 1
@@ -205,21 +208,21 @@ class BatchShell(BaseShell):
                     name = os.path.join(comparison._name, scenario._name)
                     if not fnmatch.fnmatch(name, args.filter):
                         if args.verbose:
-                            print("Skipping %s" % name)
+                            print(f"Skipping {name}")
                         continue
 
                     if args.verbose:
-                        print("Running %s" % name)
+                        print(f"Running {name}")
 
                     dirname = os.path.join(args.output, comparison._name)
-                    filename = os.path.join(dirname, scenario._name + ".json")
+                    filename = os.path.join(dirname, f"{scenario._name}.json")
                     if not os.path.exists(dirname):
                         os.makedirs(dirname)
                     report = engine.run(hardware, scenario)
                     with open(filename, "w") as fh:
                         print(report.to_json(), file=fh)
         except Exception as e:
-            print("Error: %s" % str(e), file=sys.stderr)
+            print(f"Error: {str(e)}", file=sys.stderr)
             if args.debug:
                 raise
 
@@ -262,10 +265,7 @@ class PlotShell(object):
             print("At least one chart type is required", file=sys.stderr)
             return 1
 
-        reports = []
-        for report in args.reports:
-            reports.append(Report.from_json_file(report))
-
+        reports = [Report.from_json_file(report) for report in args.reports]
         plot = Plot(reports,
                     args.migration_iters,
                     args.total_guest_cpu,

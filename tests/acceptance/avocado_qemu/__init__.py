@@ -71,7 +71,7 @@ def pick_default_qemu_bin(arch=None):
     # qemu binary path does not match arch for powerpc, handle it
     if 'ppc64le' in arch:
         arch = 'ppc64'
-    qemu_bin_relative_path = "./qemu-system-%s" % arch
+    qemu_bin_relative_path = f"./qemu-system-{arch}"
     if is_readable_executable_file(qemu_bin_relative_path):
         return qemu_bin_relative_path
 
@@ -181,9 +181,7 @@ class Test(avocado.Test):
         Gets a tag value, if unique for a key
         """
         vals = self.tags.get(tag_name, [])
-        if len(vals) == 1:
-            return vals.pop()
-        return None
+        return vals.pop() if len(vals) == 1 else None
 
     def require_accelerator(self, accelerator):
         """
@@ -307,13 +305,12 @@ class LinuxSSHMixIn:
         else:
             self.ssh_session = ssh.Session('127.0.0.1', port=port,
                                            user=username, password=credential)
-        for i in range(10):
+        for _ in range(10):
             try:
                 self.ssh_session.connect()
                 return
             except:
                 time.sleep(4)
-                pass
         self.fail('ssh connection timeout')
 
     def ssh_command(self, command):
@@ -457,15 +454,7 @@ class LinuxTest(Test, LinuxSSHMixIn):
 
         self.distro = LinuxDistro(distro_name, distro_version, self.arch)
 
-        # The distro checksum behaves differently than distro name and
-        # version. First, it does not respect a tag with the same
-        # name, given that it's not expected to be used for filtering
-        # (distro name versions are the natural choice).  Second, the
-        # order of precedence is: parameter, attribute and then value
-        # from KNOWN_DISTROS.
-        distro_checksum = self.params.get('distro_checksum',
-                                          default=None)
-        if distro_checksum:
+        if distro_checksum := self.params.get('distro_checksum', default=None):
             self.distro.checksum = distro_checksum
 
     def setUp(self, ssh_pubkey=None, network_device_type='virtio-net'):
@@ -474,8 +463,13 @@ class LinuxTest(Test, LinuxSSHMixIn):
         self.vm.add_args('-smp', '2')
         self.vm.add_args('-m', '1024')
         # The following network device allows for SSH connections
-        self.vm.add_args('-netdev', 'user,id=vnet,hostfwd=:127.0.0.1:0-:22',
-                         '-device', '%s,netdev=vnet' % network_device_type)
+        self.vm.add_args(
+            '-netdev',
+            'user,id=vnet,hostfwd=:127.0.0.1:0-:22',
+            '-device',
+            f'{network_device_type},netdev=vnet',
+        )
+
         self.set_up_boot()
         if ssh_pubkey is None:
             ssh_pubkey, self.ssh_key = self.set_up_existing_ssh_keys()
@@ -508,9 +502,8 @@ class LinuxTest(Test, LinuxSSHMixIn):
         self.log.info('Downloading/preparing boot image')
         # Fedora 31 only provides ppc64le images
         image_arch = self.arch
-        if self.distro.name == 'fedora':
-            if image_arch == 'ppc64':
-                image_arch = 'ppc64le'
+        if self.distro.name == 'fedora' and image_arch == 'ppc64':
+            image_arch = 'ppc64le'
 
         try:
             boot = vmimage.get(
@@ -545,11 +538,11 @@ class LinuxTest(Test, LinuxSSHMixIn):
 
     def set_up_boot(self):
         path = self.download_boot()
-        self.vm.add_args('-drive', 'file=%s' % path)
+        self.vm.add_args('-drive', f'file={path}')
 
     def set_up_cloudinit(self, ssh_pubkey=None):
         cloudinit_iso = self.prepare_cloudinit(ssh_pubkey)
-        self.vm.add_args('-drive', 'file=%s,format=raw' % cloudinit_iso)
+        self.vm.add_args('-drive', f'file={cloudinit_iso},format=raw')
 
     def launch_and_wait(self, set_up_ssh_connection=True):
         self.vm.set_console()

@@ -81,11 +81,28 @@ class TestSingleDrive(ImageCommitTestCase):
 
     def setUp(self):
         iotests.create_image(backing_img, self.image_len)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % backing_img, '-F', 'raw', mid_img)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % mid_img,
-                 '-F', iotests.imgfmt, test_img)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={backing_img}',
+            '-F',
+            'raw',
+            mid_img,
+        )
+
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={mid_img}',
+            '-F',
+            iotests.imgfmt,
+            test_img,
+        )
+
         qemu_io('-f', 'raw', '-c', 'write -P 0xab 0 524288', backing_img)
         qemu_io('-f', iotests.imgfmt, '-c', 'write -P 0xef 524288 524288', mid_img)
         self.vm = iotests.VM().add_drive(test_img, "node-name=top,backing.node-name=mid,backing.backing.node-name=base", interface="none")
@@ -150,24 +167,36 @@ class TestSingleDrive(ImageCommitTestCase):
         self.has_quit = True
 
     def test_device_not_found(self):
-        result = self.vm.qmp('block-commit', device='nonexistent', top='%s' % mid_img)
+        result = self.vm.qmp('block-commit', device='nonexistent', top=f'{mid_img}')
         self.assert_qmp(result, 'error/class', 'DeviceNotFound')
 
     def test_top_same_base(self):
         self.assert_no_active_block_jobs()
-        result = self.vm.qmp('block-commit', device='drive0', top='%s' % backing_img, base='%s' % backing_img)
+        result = self.vm.qmp(
+            'block-commit',
+            device='drive0',
+            top=f'{backing_img}',
+            base=f'{backing_img}',
+        )
+
         self.assert_qmp(result, 'error/class', 'GenericError')
         self.assert_qmp(result, 'error/desc', "Can't find '%s' in the backing chain" % backing_img)
 
     def test_top_invalid(self):
         self.assert_no_active_block_jobs()
-        result = self.vm.qmp('block-commit', device='drive0', top='badfile', base='%s' % backing_img)
+        result = self.vm.qmp(
+            'block-commit', device='drive0', top='badfile', base=f'{backing_img}'
+        )
+
         self.assert_qmp(result, 'error/class', 'GenericError')
         self.assert_qmp(result, 'error/desc', 'Top image file badfile not found')
 
     def test_base_invalid(self):
         self.assert_no_active_block_jobs()
-        result = self.vm.qmp('block-commit', device='drive0', top='%s' % mid_img, base='badfile')
+        result = self.vm.qmp(
+            'block-commit', device='drive0', top=f'{mid_img}', base='badfile'
+        )
+
         self.assert_qmp(result, 'error/class', 'GenericError')
         self.assert_qmp(result, 'error/desc', "Can't find 'badfile' in the backing chain")
 
@@ -185,13 +214,27 @@ class TestSingleDrive(ImageCommitTestCase):
 
     def test_top_path_and_node(self):
         self.assert_no_active_block_jobs()
-        result = self.vm.qmp('block-commit', device='drive0', top_node='mid', base_node='base', top='%s' % mid_img)
+        result = self.vm.qmp(
+            'block-commit',
+            device='drive0',
+            top_node='mid',
+            base_node='base',
+            top=f'{mid_img}',
+        )
+
         self.assert_qmp(result, 'error/class', 'GenericError')
         self.assert_qmp(result, 'error/desc', "'top-node' and 'top' are mutually exclusive")
 
     def test_base_path_and_node(self):
         self.assert_no_active_block_jobs()
-        result = self.vm.qmp('block-commit', device='drive0', top_node='mid', base_node='base', base='%s' % backing_img)
+        result = self.vm.qmp(
+            'block-commit',
+            device='drive0',
+            top_node='mid',
+            base_node='base',
+            base=f'{backing_img}',
+        )
+
         self.assert_qmp(result, 'error/class', 'GenericError')
         self.assert_qmp(result, 'error/desc', "'base-node' and 'base' are mutually exclusive")
 
@@ -207,7 +250,13 @@ class TestSingleDrive(ImageCommitTestCase):
 
     def test_top_and_base_reversed(self):
         self.assert_no_active_block_jobs()
-        result = self.vm.qmp('block-commit', device='drive0', top='%s' % backing_img, base='%s' % mid_img)
+        result = self.vm.qmp(
+            'block-commit',
+            device='drive0',
+            top=f'{backing_img}',
+            base=f'{mid_img}',
+        )
+
         self.assert_qmp(result, 'error/class', 'GenericError')
         self.assert_qmp(result, 'error/desc', "Can't find '%s' in the backing chain" % mid_img)
 
@@ -253,7 +302,7 @@ class TestSingleDrive(ImageCommitTestCase):
                 elif event['event'] == 'JOB_STATUS_CHANGE':
                     self.assert_qmp(event, 'data/id', 'drive0')
                 else:
-                    self.fail("Unexpected event %s" % (event['event']))
+                    self.fail(f"Unexpected event {event['event']}")
 
         self.assert_no_active_block_jobs()
 
@@ -309,12 +358,28 @@ class TestRelativePaths(ImageCommitTestCase):
             if exception.errno != errno.EEXIST:
                 raise
         iotests.create_image(self.backing_img_abs, TestRelativePaths.image_len)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % self.backing_img_abs,
-                 '-F', 'raw', self.mid_img_abs)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % self.mid_img_abs,
-                 '-F', iotests.imgfmt, self.test_img)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={self.backing_img_abs}',
+            '-F',
+            'raw',
+            self.mid_img_abs,
+        )
+
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={self.mid_img_abs}',
+            '-F',
+            iotests.imgfmt,
+            self.test_img,
+        )
+
         qemu_img('rebase', '-u', '-b', self.backing_img,
                  '-F', 'raw', self.mid_img_abs)
         qemu_img('rebase', '-u', '-b', self.mid_img,
@@ -334,7 +399,7 @@ class TestRelativePaths(ImageCommitTestCase):
             os.rmdir(os.path.join(iotests.test_dir, self.dir3))
             os.rmdir(os.path.join(iotests.test_dir, self.dir2))
         except OSError as exception:
-            if exception.errno != errno.EEXIST and exception.errno != errno.ENOTEMPTY:
+            if exception.errno not in [errno.EEXIST, errno.ENOTEMPTY]:
                 raise
 
     def test_commit(self):
@@ -343,24 +408,42 @@ class TestRelativePaths(ImageCommitTestCase):
         self.assertEqual(-1, qemu_io('-f', 'raw', '-c', 'read -P 0xef 524288 524288', self.backing_img_abs).find("verification failed"))
 
     def test_device_not_found(self):
-        result = self.vm.qmp('block-commit', device='nonexistent', top='%s' % self.mid_img)
+        result = self.vm.qmp(
+            'block-commit', device='nonexistent', top=f'{self.mid_img}'
+        )
+
         self.assert_qmp(result, 'error/class', 'DeviceNotFound')
 
     def test_top_same_base(self):
         self.assert_no_active_block_jobs()
-        result = self.vm.qmp('block-commit', device='drive0', top='%s' % self.mid_img, base='%s' % self.mid_img)
+        result = self.vm.qmp(
+            'block-commit',
+            device='drive0',
+            top=f'{self.mid_img}',
+            base=f'{self.mid_img}',
+        )
+
         self.assert_qmp(result, 'error/class', 'GenericError')
         self.assert_qmp(result, 'error/desc', "Can't find '%s' in the backing chain" % self.mid_img)
 
     def test_top_invalid(self):
         self.assert_no_active_block_jobs()
-        result = self.vm.qmp('block-commit', device='drive0', top='badfile', base='%s' % self.backing_img)
+        result = self.vm.qmp(
+            'block-commit',
+            device='drive0',
+            top='badfile',
+            base=f'{self.backing_img}',
+        )
+
         self.assert_qmp(result, 'error/class', 'GenericError')
         self.assert_qmp(result, 'error/desc', 'Top image file badfile not found')
 
     def test_base_invalid(self):
         self.assert_no_active_block_jobs()
-        result = self.vm.qmp('block-commit', device='drive0', top='%s' % self.mid_img, base='badfile')
+        result = self.vm.qmp(
+            'block-commit', device='drive0', top=f'{self.mid_img}', base='badfile'
+        )
+
         self.assert_qmp(result, 'error/class', 'GenericError')
         self.assert_qmp(result, 'error/desc', "Can't find 'badfile' in the backing chain")
 
@@ -371,7 +454,13 @@ class TestRelativePaths(ImageCommitTestCase):
 
     def test_top_and_base_reversed(self):
         self.assert_no_active_block_jobs()
-        result = self.vm.qmp('block-commit', device='drive0', top='%s' % self.backing_img, base='%s' % self.mid_img)
+        result = self.vm.qmp(
+            'block-commit',
+            device='drive0',
+            top=f'{self.backing_img}',
+            base=f'{self.mid_img}',
+        )
+
         self.assert_qmp(result, 'error/class', 'GenericError')
         self.assert_qmp(result, 'error/desc', "Can't find '%s' in the backing chain" % self.mid_img)
 
@@ -381,14 +470,31 @@ class TestSetSpeed(ImageCommitTestCase):
 
     def setUp(self):
         qemu_img('create', backing_img, str(TestSetSpeed.image_len))
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % backing_img, '-F', 'raw', mid_img)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % mid_img,
-                 '-F', iotests.imgfmt, test_img)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={backing_img}',
+            '-F',
+            'raw',
+            mid_img,
+        )
+
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={mid_img}',
+            '-F',
+            iotests.imgfmt,
+            test_img,
+        )
+
         qemu_io('-f', iotests.imgfmt, '-c', 'write -P 0x1 0 512', test_img)
         qemu_io('-f', iotests.imgfmt, '-c', 'write -P 0xef 524288 524288', mid_img)
-        self.vm = iotests.VM().add_drive('blkdebug::' + test_img)
+        self.vm = iotests.VM().add_drive(f'blkdebug::{test_img}')
         self.vm.launch()
 
     def tearDown(self):
@@ -423,14 +529,39 @@ class TestReopenOverlay(ImageCommitTestCase):
 
     def setUp(self):
         iotests.create_image(self.img0, self.image_len)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % self.img0, '-F', 'raw', self.img1)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % self.img1,
-                 '-F', iotests.imgfmt, self.img2)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % self.img2,
-                 '-F', iotests.imgfmt, self.img3)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={self.img0}',
+            '-F',
+            'raw',
+            self.img1,
+        )
+
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={self.img1}',
+            '-F',
+            iotests.imgfmt,
+            self.img2,
+        )
+
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={self.img2}',
+            '-F',
+            iotests.imgfmt,
+            self.img3,
+        )
+
         qemu_io('-f', iotests.imgfmt, '-c', 'write -P 0xab 0 128K', self.img1)
         self.vm = iotests.VM().add_drive(self.img3)
         self.vm.launch()
@@ -453,12 +584,28 @@ class TestErrorHandling(iotests.QMPTestCase):
 
     def setUp(self):
         iotests.create_image(backing_img, self.image_len)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % backing_img,
-                 '-F', 'raw', mid_img)
-        qemu_img('create', '-f', iotests.imgfmt,
-                 '-o', 'backing_file=%s' % mid_img,
-                 '-F', iotests.imgfmt, test_img)
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={backing_img}',
+            '-F',
+            'raw',
+            mid_img,
+        )
+
+        qemu_img(
+            'create',
+            '-f',
+            iotests.imgfmt,
+            '-o',
+            f'backing_file={mid_img}',
+            '-F',
+            iotests.imgfmt,
+            test_img,
+        )
+
 
         qemu_io('-f', iotests.imgfmt, '-c', 'write -P 0x11 0 512k', mid_img)
         qemu_io('-f', iotests.imgfmt, '-c', 'write -P 0x22 0 512k', test_img)
@@ -528,7 +675,7 @@ class TestErrorHandling(iotests.QMPTestCase):
                 result = self.vm.qmp('block-job-complete', device='job0')
                 self.assert_qmp(result, 'return', {})
             else:
-                self.fail("Unexpected event: %s" % ev)
+                self.fail(f"Unexpected event: {ev}")
             log.append(iotests.filter_qmp_event(ev))
 
         self.maxDiff = None

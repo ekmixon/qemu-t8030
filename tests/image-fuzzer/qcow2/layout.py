@@ -64,11 +64,7 @@ class FieldsList(object):
     """
 
     def __init__(self, meta_data=None):
-        if meta_data is None:
-            self.data = []
-        else:
-            self.data = [Field(*f)
-                         for f in meta_data]
+        self.data = [] if meta_data is None else [Field(*f) for f in meta_data]
 
     def __getitem__(self, name):
         return [x for x in self.data if x.name == name]
@@ -171,10 +167,12 @@ class Image(object):
         """Add the name of the backing file at the offset specified
         in the header.
         """
-        if (backing_file_name is not None) and \
-           (not self.header['backing_file_offset'][0].value == 0):
+        if (
+            backing_file_name is not None
+            and self.header['backing_file_offset'][0].value != 0
+        ):
             data_len = len(backing_file_name)
-            data_fmt = '>' + str(data_len) + 's'
+            data_fmt = f'>{data_len}s'
             self.backing_file_name = FieldsList([
                 [data_fmt, self.header['backing_file_offset'][0].value,
                  backing_file_name, 'bf_name']
@@ -182,29 +180,30 @@ class Image(object):
 
     def set_backing_file_format(self, backing_file_fmt=None):
         """Generate the header extension for the backing file format."""
-        if backing_file_fmt is not None:
-            # Calculation of the free space available in the first cluster
-            end_of_extension_area_len = 2 * UINT32_S
-            high_border = (self.header['backing_file_offset'][0].value or
-                           (self.cluster_size - 1)) - \
+        if backing_file_fmt is None:
+            return
+        # Calculation of the free space available in the first cluster
+        end_of_extension_area_len = 2 * UINT32_S
+        high_border = (self.header['backing_file_offset'][0].value or
+                       (self.cluster_size - 1)) - \
                 end_of_extension_area_len
-            free_space = high_border - self.ext_offset
-            ext_size = 2 * UINT32_S + ((len(backing_file_fmt) + 7) & ~7)
+        free_space = high_border - self.ext_offset
+        ext_size = 2 * UINT32_S + ((len(backing_file_fmt) + 7) & ~7)
 
-            if free_space >= ext_size:
-                ext_data_len = len(backing_file_fmt)
-                ext_data_fmt = '>' + str(ext_data_len) + 's'
-                ext_padding_len = 7 - (ext_data_len - 1) % 8
-                self.backing_file_format = FieldsList([
-                    ['>I', self.ext_offset, 0xE2792ACA, 'ext_magic'],
-                    ['>I', self.ext_offset + UINT32_S, ext_data_len,
-                     'ext_length'],
-                    [ext_data_fmt, self.ext_offset + UINT32_S * 2,
-                     backing_file_fmt, 'bf_format']
-                ])
-                self.ext_offset = \
+        if free_space >= ext_size:
+            ext_data_len = len(backing_file_fmt)
+            ext_data_fmt = f'>{ext_data_len}s'
+            ext_padding_len = 7 - (ext_data_len - 1) % 8
+            self.backing_file_format = FieldsList([
+                ['>I', self.ext_offset, 0xE2792ACA, 'ext_magic'],
+                ['>I', self.ext_offset + UINT32_S, ext_data_len,
+                 'ext_length'],
+                [ext_data_fmt, self.ext_offset + UINT32_S * 2,
+                 backing_file_fmt, 'bf_format']
+            ])
+            self.ext_offset = \
                         struct.calcsize(
-                            self.backing_file_format['bf_format'][0].fmt) + \
+                        self.backing_file_format['bf_format'][0].fmt) + \
                         ext_padding_len + \
                         self.backing_file_format['bf_format'][0].offset
 
@@ -219,14 +218,14 @@ class Image(object):
         end_of_extension_area_len = 2 * UINT32_S
         high_border = (self.header['backing_file_offset'][0].value or
                        (self.cluster_size - 1)) - \
-            end_of_extension_area_len
+                end_of_extension_area_len
         free_space = high_border - self.ext_offset
         # Sum of sizes of 'magic' and 'length' header extension fields
         ext_header_len = 2 * UINT32_S
         fnt_entry_size = 6 * UINT64_S
         num_fnt_entries = min(10, (free_space - ext_header_len) /
                               fnt_entry_size)
-        if not num_fnt_entries == 0:
+        if num_fnt_entries != 0:
             feature_tables = []
             feature_ids = []
             inner_offset = self.ext_offset + ext_header_len
@@ -237,7 +236,7 @@ class Image(object):
                 while (feat_type, feat_bit) in feature_ids:
                     feat_type, feat_bit = gen_feat_ids()
                 feature_ids.append((feat_type, feat_bit))
-                feat_fmt = '>' + str(len(feat_name)) + 's'
+                feat_fmt = f'>{len(feat_name)}s'
                 feature_tables += [['B', inner_offset,
                                     feat_type, 'feature_type'],
                                    ['B', inner_offset + 1, feat_bit,
@@ -273,7 +272,7 @@ class Image(object):
             l2_size = self.cluster_size // UINT64_S
             entry_offset = offset + UINT64_S * (guest % l2_size)
             cluster_descriptor = host * self.cluster_size
-            if not self.header['version'][0].value == 2:
+            if self.header['version'][0].value != 2:
                 cluster_descriptor += random.randint(0, 1)
             # While snapshots are not supported, bit #63 = 1
             # Compressed clusters are not supported => bit #62 = 0
@@ -338,14 +337,14 @@ class Image(object):
         def allocate_rfc_blocks(data, size):
             """Return indices of clusters allocated for refcount blocks."""
             cluster_ids = set()
-            diff = block_ids = set([x // size for x in data])
-            while len(diff) != 0:
+            diff = block_ids = {x // size for x in data}
+            while diff:
                 # Allocate all yet not allocated clusters
                 new = self._get_available_clusters(data | cluster_ids,
                                                    len(diff))
                 # Indices of new refcount blocks necessary to cover clusters
                 # in 'new'
-                diff = set([x // size for x in new]) - block_ids
+                diff = {x // size for x in new} - block_ids
                 cluster_ids |= new
                 block_ids |= diff
             return cluster_ids, block_ids
@@ -372,7 +371,7 @@ class Image(object):
                                                  table_size + 1))
             # New refcount blocks necessary for clusters occupied by the
             # refcount table
-            diff = set([c // block_size for c in table_clusters]) - blocks
+            diff = {c // block_size for c in table_clusters} - blocks
             blocks |= diff
             while len(diff) != 0:
                 # Allocate clusters for new refcount blocks
@@ -381,7 +380,7 @@ class Image(object):
                                                    len(diff))
                 # Indices of new refcount blocks necessary to cover
                 # clusters in 'new'
-                diff = set([x // block_size for x in new]) - blocks
+                diff = {x // block_size for x in new} - blocks
                 clusters |= new
                 blocks |= diff
                 # Check if the refcount table needs one more cluster
@@ -409,6 +408,7 @@ class Image(object):
             entry_offset = offset + entry_size * (cluster % block_size)
             # While snapshots are not supported all refcounts are set to 1
             return ['>H', entry_offset, 1, 'refcount_block_entry']
+
         # Size of a block entry in bits
         refcount_bits = 1 << self.header['refcount_order'][0].value
         # Number of refcount entries per refcount block
@@ -420,18 +420,19 @@ class Image(object):
             # All metadata for an empty guest image needs 4 clusters:
             # header, rfc table, rfc block, L1 table.
             # Header takes cluster #0, other clusters ##1-3 can be used
-            block_clusters = set([random.choice(list(set(range(1, 4)) -
-                                                     meta_data))])
-            block_ids = set([0])
-            table_clusters = set([random.choice(list(set(range(1, 4)) -
-                                                     meta_data -
-                                                     block_clusters))])
+            block_clusters = {random.choice(list(set(range(1, 4)) - meta_data))}
+
+            block_ids = {0}
+            table_clusters = {
+                random.choice(list(set(range(1, 4)) - meta_data - block_clusters))
+            }
+
         else:
             block_clusters, block_ids = \
-                                allocate_rfc_blocks(self.data_clusters |
+                                    allocate_rfc_blocks(self.data_clusters |
                                                     meta_data, block_size)
             table_clusters, block_ids, new_clusters = \
-                                    allocate_rfc_table(self.data_clusters |
+                                        allocate_rfc_table(self.data_clusters |
                                                        meta_data |
                                                        block_clusters,
                                                        block_ids,
@@ -502,23 +503,22 @@ class Image(object):
 
     def write(self, filename):
         """Write an entire image to the file."""
-        image_file = open(filename, 'wb')
-        for field in self:
-            image_file.seek(field.offset)
-            image_file.write(struct.pack(field.fmt, field.value))
+        with open(filename, 'wb') as image_file:
+            for field in self:
+                image_file.seek(field.offset)
+                image_file.write(struct.pack(field.fmt, field.value))
 
-        for cluster in sorted(self.data_clusters):
-            image_file.seek(cluster * self.cluster_size)
-            image_file.write(urandom(self.cluster_size))
+            for cluster in sorted(self.data_clusters):
+                image_file.seek(cluster * self.cluster_size)
+                image_file.write(urandom(self.cluster_size))
 
-        # Align the real image size to the cluster size
-        image_file.seek(0, 2)
-        size = image_file.tell()
-        rounded = (size + self.cluster_size - 1) & ~(self.cluster_size - 1)
-        if rounded > size:
-            image_file.seek(rounded - 1)
-            image_file.write(b'\x00')
-        image_file.close()
+            # Align the real image size to the cluster size
+            image_file.seek(0, 2)
+            size = image_file.tell()
+            rounded = (size + self.cluster_size - 1) & ~(self.cluster_size - 1)
+            if rounded > size:
+                image_file.seek(rounded - 1)
+                image_file.write(b'\x00')
 
     @staticmethod
     def _size_params():
@@ -577,10 +577,7 @@ class Image(object):
         append_id = max(used) + 1
         free = list(set(range(1, append_id)) - used)
         idx = get_cluster_id(free, size)
-        if idx is None:
-            return append_id
-        else:
-            return idx
+        return append_id if idx is None else idx
 
     @staticmethod
     def _alloc_data(img_size, cluster_size):
@@ -592,10 +589,7 @@ class Image(object):
 
     def _get_metadata(self):
         """Return indices of clusters allocated for image metadata."""
-        ids = set()
-        for x in self:
-            ids.add(x.offset // self.cluster_size)
-        return ids
+        return {x.offset // self.cluster_size for x in self}
 
 
 def create_image(test_img_path, backing_file_name=None, backing_file_fmt=None,

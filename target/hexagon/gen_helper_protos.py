@@ -47,9 +47,9 @@ def_helper_types_pair = {
 
 def gen_def_helper_opn(f, tag, regtype, regid, toss, numregs, i):
     if (hex_common.is_pair(regid)):
-        f.write(", %s" % (def_helper_types_pair[regtype]))
+        f.write(f", {def_helper_types_pair[regtype]}")
     elif (hex_common.is_single(regid)):
-        f.write(", %s" % (def_helper_types[regtype]))
+        f.write(f", {def_helper_types[regtype]}")
     else:
         print("Bad register parse: ",regtype,regid,toss,numregs)
 
@@ -71,9 +71,10 @@ def gen_helper_prototype(f, tag, tagregs, tagimms):
             numresults += 1
             if (hex_common.is_scalar_reg(regtype)):
                 numscalarresults += 1
-        if (hex_common.is_readwrite(regid)):
-            if (hex_common.is_scalar_reg(regtype)):
-                numscalarreadwrite += 1
+        if (hex_common.is_readwrite(regid)) and (
+            hex_common.is_scalar_reg(regtype)
+        ):
+            numscalarreadwrite += 1
 
     if (numscalarresults > 1):
         ## The helper is bogus when there is more than one result
@@ -84,14 +85,14 @@ def gen_helper_prototype(f, tag, tagregs, tagimms):
             def_helper_size = len(regs)+len(imms)+numscalarreadwrite+1
             if hex_common.need_part1(tag): def_helper_size += 1
             if hex_common.need_slot(tag): def_helper_size += 1
-            f.write('DEF_HELPER_%s(%s' % (def_helper_size, tag))
+            f.write(f'DEF_HELPER_{def_helper_size}({tag}')
             ## The return type is void
             f.write(', void' )
         else:
             def_helper_size = len(regs)+len(imms)+numscalarreadwrite
             if hex_common.need_part1(tag): def_helper_size += 1
             if hex_common.need_slot(tag): def_helper_size += 1
-            f.write('DEF_HELPER_%s(%s' % (def_helper_size, tag))
+            f.write(f'DEF_HELPER_{def_helper_size}({tag}')
 
         ## Generate the qemu DEF_HELPER type for each result
         i=0

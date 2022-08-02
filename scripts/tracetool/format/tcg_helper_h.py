@@ -36,13 +36,8 @@ def generate(events, backend, group):
                                 TCG_2_TCG_HELPER_DECL)
         types = ", ".join(args.types())
         if types != "":
-            types = ", " + types
+            types = f", {types}"
 
         flags = "TCG_CALL_NO_RWG, "
 
-        out(fmt,
-            flags=flags,
-            argc=len(args),
-            name=e.api() + "_proxy",
-            types=types,
-            )
+        out(fmt, flags=flags, argc=len(args), name=f"{e.api()}_proxy", types=types)

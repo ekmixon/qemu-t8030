@@ -20,31 +20,23 @@ import tracetool.vcpu
 def vcpu_transform_args(args, mode):
     assert len(args) == 1
     # NOTE: this name must be kept in sync with the one in "tcg_h"
-    args = Arguments([(args.types()[0], "__tcg_" + args.names()[0])])
+    args = Arguments([(args.types()[0], f"__tcg_{args.names()[0]}")])
     if mode == "code":
-        return Arguments([
-            # Does cast from helper requirements to tracing types
-            ("CPUState *", "env_cpu(%s)" % args.names()[0]),
-        ])
+        return Arguments([("CPUState *", f"env_cpu({args.names()[0]})")])
+    args = Arguments([
+        # NOTE: Current helper code uses TCGv_env (CPUArchState*)
+        ("CPUArchState *", args.names()[0]),
+    ])
+    if mode == "header":
+        return args
+    elif mode == "wrapper":
+        return args.transform(HOST_2_TCG)
     else:
-        args = Arguments([
-            # NOTE: Current helper code uses TCGv_env (CPUArchState*)
-            ("CPUArchState *", args.names()[0]),
-        ])
-        if mode == "header":
-            return args
-        elif mode == "wrapper":
-            return args.transform(HOST_2_TCG)
-        else:
-            assert False
+        assert False
 
 
 def generate(events, backend, group):
-    if group == "root":
-        header = "trace/trace-root.h"
-    else:
-        header = "trace.h"
-
+    header = "trace/trace-root.h" if group == "root" else "trace.h"
     events = [e for e in events
               if "disable" not in e.properties]
 
@@ -67,13 +59,13 @@ def generate(events, backend, group):
         e_args_call = tracetool.vcpu.transform_args(
             "tcg_helper_c", e, "code")
 
-        out('void %(name_tcg)s(%(args_api)s)',
+        out(
+            'void %(name_tcg)s(%(args_api)s)',
             '{',
-            # NOTE: the check was already performed at TCG-generation time
             '    %(name)s(%(args_call)s);',
             '}',
-            name_tcg="helper_%s_proxy" % e.api(),
+            name_tcg=f"helper_{e.api()}_proxy",
             name=e.api(e.QEMU_TRACE_NOCHECK),
             args_api=e_args_api,
             args_call=", ".join(e_args_call.casted()),
-            )
+        )

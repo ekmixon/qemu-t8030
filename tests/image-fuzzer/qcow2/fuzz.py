@@ -90,7 +90,7 @@ def validator(current, pick, choices):
     """
     while True:
         val = pick(choices)
-        if not val == current:
+        if val != current:
             return val
 
 
@@ -131,10 +131,7 @@ def selector(current, constraints, validate=int_validator):
         This auxiliary function replaces short circuit conditions not supported
         in Python 2.4
         """
-        if type(c) == list:
-            return validate(current, c)
-        else:
-            return c
+        return validate(current, c) if type(c) == list else c
 
     fuzz_values = [iter_validate(c) for c in constraints]
     # Remove current for cases it's implicitly specified in constraints
@@ -351,9 +348,12 @@ def l2_entry(current):
     is_compressed = random.randint(0, 1)
     is_cow = random.randint(0, 1)
     is_zero = random.randint(0, 1)
-    value = offset + (is_cow << UINT64_M) + \
-            (is_compressed << UINT64_M - 1) + is_zero
-    return value
+    return (
+        offset
+        + (is_cow << UINT64_M)
+        + (is_compressed << UINT64_M - 1)
+        + is_zero
+    )
 
 
 def refcount_table_entry(current):

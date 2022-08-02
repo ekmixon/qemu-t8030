@@ -212,11 +212,7 @@ class QAPISchemaGenRSTVisitor(QAPISchemaVisitor):
             if section.member.ifcond:
                 termtext.extend(self._nodes_for_ifcond(section.member.ifcond))
             # TODO drop fallbacks when undocumented members are outlawed
-            if section.text:
-                defn = section.text
-            else:
-                defn = [nodes.Text('Not documented')]
-
+            defn = section.text or [nodes.Text('Not documented')]
             dlnode += self._make_dlitem(termtext, defn)
             seen_item = True
 
@@ -296,8 +292,12 @@ class QAPISchemaGenRSTVisitor(QAPISchemaVisitor):
 
         doc = self._cur_doc
         snode = nodes.section(ids=[self._sphinx_directive.new_serialno()])
-        snode += nodes.title('', '', *[nodes.literal(doc.symbol, doc.symbol),
-                                       nodes.Text(' (' + typ + ')')])
+        snode += nodes.title(
+            '',
+            '',
+            *[nodes.literal(doc.symbol, doc.symbol), nodes.Text(f' ({typ})')],
+        )
+
         self._parse_text_into_node(doc.body.text, snode)
         for s in sections:
             if s is not None:
@@ -468,7 +468,7 @@ class QAPISchemaGenDepVisitor(QAPISchemaVisitor):
 
     def visit_module(self, name):
         if name != "./builtin":
-            qapifile = self._qapidir + '/' + name
+            qapifile = f'{self._qapidir}/{name}'
             self._env.note_dependency(os.path.abspath(qapifile))
         super().visit_module(name)
 
@@ -489,7 +489,7 @@ class QAPIDocDirective(Directive):
 
     def run(self):
         env = self.state.document.settings.env
-        qapifile = env.config.qapidoc_srctree + '/' + self.arguments[0]
+        qapifile = f'{env.config.qapidoc_srctree}/{self.arguments[0]}'
         qapidir = os.path.dirname(qapifile)
 
         try:

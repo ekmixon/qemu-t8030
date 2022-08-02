@@ -53,9 +53,10 @@ def generate(events, backend, group):
             for (type_, name) in args_tcg_compat
         ]
 
-        gen_name = "gen_helper_" + e.api()
+        gen_name = f"gen_helper_{e.api()}"
 
-        out('static inline void %(name)s(%(args)s)',
+        out(
+            'static inline void %(name)s(%(args)s)',
             '{',
             '    %(code_new)s',
             '    %(proxy_name)s(%(tmp_names)s);',
@@ -63,8 +64,8 @@ def generate(events, backend, group):
             '}',
             name=gen_name,
             args=e_args,
-            proxy_name=gen_name + "_proxy",
+            proxy_name=f"{gen_name}_proxy",
             code_new="\n    ".join(code_new),
             code_free="\n    ".join(code_free),
-            tmp_names=", ".join(["__%s" % name for _, name in e_args]),
-            )
+            tmp_names=", ".join([f"__{name}" for _, name in e_args]),
+        )

@@ -55,10 +55,7 @@ class QEMUQtestProtocol:
             self._sock.listen(1)
 
     def _get_sock(self) -> socket.socket:
-        if isinstance(self._address, tuple):
-            family = socket.AF_INET
-        else:
-            family = socket.AF_UNIX
+        family = socket.AF_INET if isinstance(self._address, tuple) else socket.AF_UNIX
         return socket.socket(family, socket.SOCK_STREAM)
 
     def connect(self) -> None:
@@ -87,8 +84,7 @@ class QEMUQtestProtocol:
         """
         assert self._sockfile is not None
         self._sock.sendall((qtest_cmd + "\n").encode('utf-8'))
-        resp = self._sockfile.readline()
-        return resp
+        return self._sockfile.readline()
 
     def close(self) -> None:
         """
@@ -126,7 +122,7 @@ class QEMUQtestMachine(QEMUMachine):
                          socket_scm_helper=socket_scm_helper,
                          sock_dir=sock_dir)
         self._qtest: Optional[QEMUQtestProtocol] = None
-        self._qtest_path = os.path.join(sock_dir, name + "-qtest.sock")
+        self._qtest_path = os.path.join(sock_dir, f"{name}-qtest.sock")
 
     @property
     def _base_args(self) -> List[str]:
